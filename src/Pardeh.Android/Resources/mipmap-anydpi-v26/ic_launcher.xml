@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pardeh launcher icon: a very dark navy tile behind the logo picture (inside the 66 dp safe zone); the monochrome layer is the
+     Android 13+ themed icon. The layers are generated from the logo master (scripts/export-logo-image.ps1). -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+  <background android:drawable="@drawable/ic_launcher_pardeh_background" />
+  <foreground android:drawable="@drawable/ic_launcher_foreground" />
+  <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

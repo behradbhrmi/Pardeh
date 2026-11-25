@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The shared Avalonia UI: skin renderer, full modes, panels, dialogs and the player view.
+       Platform-neutral (plain net11.0 is also what a net11.0-android head consumes). Platform pieces come through IPlatformServices. -->
+  <PropertyGroup>
+    <RootNamespace>Pardeh.UI</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- net11.0 for the Windows head; net11.0-android so the Android head gets the Android build of Pardeh.Nava (AudioTrack),
+         not the net11.0 one (WASAPI / Media Foundation). -->
+    <TargetFramework />
+    <TargetFrameworks>net11.0;net11.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.EndsWith('-android'))">24.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <!-- The Android SDK's implicit usings clash with Avalonia type names (Application, Button ...). -->
+  <ItemGroup Condition="$(TargetFramework.EndsWith('-android'))">
+    <Using Remove="Android.App" />
+    <Using Remove="Android.Content" />
+    <Using Remove="Android.Runtime" />
+    <Using Remove="Android.Views" />
+    <Using Remove="Android.Widget" />
+    <Using Remove="Android.OS" />
+    <Using Remove="Android.Util" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+    <ProjectReference Include="..\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\Pardeh.Skinning\Pardeh.Skinning.csproj" />
+  </ItemGroup>
+
+  <!-- The logo masters (built by tools/logo-master, see Assets/README.md); read by FullMode/LogoImage. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\pardeh-logo-*.png" LogicalName="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pardeh" />
+    <InternalsVisibleTo Include="Pardeh.Skinning.Tests" />
+    <InternalsVisibleTo Include="Pardeh.Android" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Classic branding launcher tile: glossy royal blue with a soft light swirl (like the cover tile of the design). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+  <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+    <aapt:attr name="android:fillColor">
+      <gradient android:startX="54" android:startY="0" android:endX="54" android:endY="108" android:type="linear">
+        <item android:offset="0" android:color="#FF2A74F0"/>
+        <item android:offset="0.5" android:color="#FF1048C8"/>
+        <item android:offset="1" android:color="#FF0A2A96"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+  <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
+    <aapt:attr name="android:fillColor">
+      <gradient android:centerX="40" android:centerY="38" android:gradientRadius="70" android:type="radial">
+        <item android:offset="0" android:color="#D2B4E4FF"/>
+        <item android:offset="1" android:color="#00B4E4FF"/>
+      </gradient>
+    </aapt:attr>
+  </path>
+  <path android:strokeColor="#BEFFFFFF" android:strokeWidth="1.6" android:strokeLineCap="round"
+      android:pathData="M-10,86 C25,34 78,14 120,22"/>
+  <path android:strokeColor="#82FFFFFF" android:strokeWidth="1.2" android:strokeLineCap="round"
+      android:pathData="M-6,104 C34,64 86,44 126,62"/>
+</vector>

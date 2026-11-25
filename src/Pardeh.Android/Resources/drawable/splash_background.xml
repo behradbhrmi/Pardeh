@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-Android-12 launch window: the dark letterbox colour (no logo: the branding is switchable at run time). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item android:drawable="@color/pardeh_splash"/>
+</layer-list>

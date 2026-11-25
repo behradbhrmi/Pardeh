@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed (monochrome) layer of the classic icon: four flag panes, inside the safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+  <path android:fillColor="#FF000000" android:pathData="M30,40 C36,43 42,43 51,39 L51,52 C42,56 36,56 30,53 Z"/>
+  <path android:fillColor="#FF000000" android:pathData="M57,38 C64,35 71,33 78,35 L78,48 C71,46 64,48 57,51 Z"/>
+  <path android:fillColor="#FF000000" android:pathData="M30,58 C36,61 42,61 51,57 L51,70 C42,74 36,74 30,71 Z"/>
+  <path android:fillColor="#FF000000" android:pathData="M57,56 C64,53 71,51 78,53 L78,66 C71,64 64,66 57,69 Z"/>
+</vector>

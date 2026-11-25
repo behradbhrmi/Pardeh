@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Pardeh.Android/Pardeh.Android.csproj" />
+    <Project Path="src/Pardeh.App/Pardeh.App.csproj" />
+    <Project Path="src/Pardeh.Core/Pardeh.Core.csproj" />
+    <Project Path="src/Pardeh.Nava/Pardeh.Nava.csproj" />
+    <Project Path="src/Pardeh.Skinning/Pardeh.Skinning.csproj" />
+    <Project Path="src/Pardeh.UI/Pardeh.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pardeh.Skinning.Tests/Pardeh.Skinning.Tests.csproj" />
+  </Folder>
+</Solution>

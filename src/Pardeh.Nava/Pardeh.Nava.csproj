@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Pardeh.Nava</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- net11.0: the desktop build (WASAPI + Media Foundation, Windows). net11.0-android: AudioTrack output. -->
+    <TargetFramework />
+    <TargetFrameworks>net11.0;net11.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.EndsWith('-android'))">24.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FFmpeg.AutoGen" Version="8.1.0" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+  </ItemGroup>
+
+  <!-- NAudio.Core: ISampleProvider, DSP, wave formats (platform neutral). The full NAudio adds WASAPI and Media Foundation. -->
+  <ItemGroup Condition="!$(TargetFramework.EndsWith('-android'))">
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.EndsWith('-android'))">
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+  </ItemGroup>
+
+  <!-- Platform-specific files live in their own folders. -->
+  <ItemGroup Condition="$(TargetFramework.EndsWith('-android'))">
+    <Compile Remove="Windows\**" />
+  </ItemGroup>
+  <ItemGroup Condition="!$(TargetFramework.EndsWith('-android'))">
+    <Compile Remove="Android\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pardeh.Skinning.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Avalonia Android head: one activity, single-view lifetime, hosting the shared Pardeh.UI player view. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Pardeh.Android</RootNamespace>
+    <AssemblyName>Pardeh.Android</AssemblyName>
+    <SupportedOSPlatformVersion>24.0</SupportedOSPlatformVersion>
+    <ApplicationId>org.pardeh.player</ApplicationId>
+    <Version>1.0.0</Version>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Start-up: no tiered-PGO instrumentation (the first script engine is JIT-bound). -->
+    <TieredPGO>false</TieredPGO>
+  </PropertyGroup>
+
+  <!-- Shell branding: ClassicBranding (default false; -p:ClassicBranding=true) picks the static application label / icon and
+       which launcher alias starts enabled. The in-app "Classic branding" switch flips the aliases at run time. -->
+  <PropertyGroup>
+    <ClassicBranding Condition="'$(ClassicBranding)' == ''">false</ClassicBranding>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ClassicBranding)' != 'false'">
+    <AndroidManifestPlaceholders>appLabel=Windows Media Player;appIcon=@mipmap/ic_launcher_classic;appRoundIcon=@mipmap/ic_launcher_classic_round;classicEnabled=true;pardehEnabled=false</AndroidManifestPlaceholders>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ClassicBranding)' == 'false'">
+    <AndroidManifestPlaceholders>appLabel=Pardeh;appIcon=@mipmap/ic_launcher;appRoundIcon=@mipmap/ic_launcher_round;classicEnabled=false;pardehEnabled=true</AndroidManifestPlaceholders>
+  </PropertyGroup>
+
+  <!-- Fast deployment crashes at start-up here; always embed the assemblies in Debug too. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' and '$(EmbedAssembliesIntoApk)' == ''">
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+    <ProjectReference Include="..\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\Pardeh.Skinning\Pardeh.Skinning.csproj" />
+    <ProjectReference Include="..\Pardeh.UI\Pardeh.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" Version="12.1.5" />
+  </ItemGroup>
+
+  <!-- FFmpeg shared libraries, supplied by the builder (not committed): lib/<abi>/libavcodec.so, libavformat.so, libavutil.so,
+       libswresample.so, libswscale.so (see docs/android-build.md). The folder name is the ABI. Without them the app still
+       starts, but cannot decode anything. -->
+  <ItemGroup>
+    <AndroidNativeLibrary Include="lib\arm64-v8a\*.so" />
+    <AndroidNativeLibrary Include="lib\x86_64\*.so" />
+  </ItemGroup>
+
+</Project>

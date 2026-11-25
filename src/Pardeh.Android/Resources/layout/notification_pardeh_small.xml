@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Collapsed Pardeh notification: cover, title / artist, previous, play / pause, next. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layoutDirection="ltr"
+    android:layout_width="match_parent" android:layout_height="wrap_content">
+  <ImageView android:id="@+id/pd_bg" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" />
+  <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent" android:background="#66000000" />
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:padding="6dp">
+    <ImageView android:id="@+id/pd_cover" android:layout_width="40dp" android:layout_height="40dp" android:scaleType="centerCrop" />
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="10dp">
+      <TextView android:id="@+id/pd_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textDirection="firstStrong" android:textColor="#FFFFFFFF" android:textSize="14sp" android:textStyle="bold" android:singleLine="true" android:ellipsize="end" />
+      <TextView android:id="@+id/pd_artist" android:layout_width="match_parent" android:layout_height="wrap_content" android:textDirection="firstStrong" android:textColor="#CCFFFFFF" android:textSize="12sp" android:singleLine="true" android:ellipsize="end" />
+    </LinearLayout>
+    <ImageButton android:id="@+id/pd_prev" style="?android:attr/borderlessButtonStyle" android:layout_width="36dp" android:layout_height="36dp" android:padding="6dp" android:scaleType="centerInside" />
+    <ImageButton android:id="@+id/pd_play" style="?android:attr/borderlessButtonStyle" android:layout_width="40dp" android:layout_height="36dp" android:padding="6dp" android:scaleType="centerInside" />
+    <ImageButton android:id="@+id/pd_next" style="?android:attr/borderlessButtonStyle" android:layout_width="36dp" android:layout_height="36dp" android:padding="6dp" android:scaleType="centerInside" />
+  </LinearLayout>
+</FrameLayout>

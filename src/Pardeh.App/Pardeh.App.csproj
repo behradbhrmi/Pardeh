@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Pardeh.App</RootNamespace>
+    <AssemblyName>Pardeh</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The logo as a multi-size icon, generated from FullMode/PardehLogoArt.cs by scripts/export-logo.ps1. -->
+    <ApplicationIcon>pardeh.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <FfmpegDir>$(MSBuildThisFileDirectory)..\..\tools\ffmpeg\win-x64\</FfmpegDir>
+    <!-- Windows APIs (media keys and the volume overlay via System Media Transport Controls); the cached SDK projection. -->
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
+    <WindowsSdkPackageVersion>10.0.26100.87</WindowsSdkPackageVersion>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- Keep the usual output folder (bin\Debug\net11.0). -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\net11.0\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+    <ProjectReference Include="..\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\Pardeh.Skinning\Pardeh.Skinning.csproj" />
+    <ProjectReference Include="..\Pardeh.UI\Pardeh.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Also embedded, for the window (taskbar) icon. -->
+    <EmbeddedResource Include="pardeh.ico" LogicalName="pardeh.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.5" />
+  </ItemGroup>
+
+  <!-- FFmpeg (LGPL, fetched by scripts/get-ffmpeg.ps1) ships next to the app in an "ffmpeg" folder. -->
+  <ItemGroup Condition="Exists('$(FfmpegDir)')">
+    <None Include="$(FfmpegDir)*.*" LinkBase="ffmpeg" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+</Project>

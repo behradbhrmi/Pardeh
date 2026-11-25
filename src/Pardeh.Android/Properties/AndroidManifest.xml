@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+  <!-- The application label / icon are static: they follow the ClassicBranding build property (see the csproj). The launcher
+       entries below are two aliases of MainActivity; the in-app "Classic branding" switch enables exactly one of them at run time. -->
+  <application android:label="${appLabel}" android:icon="${appIcon}" android:roundIcon="${appRoundIcon}" android:allowBackup="true" android:extractNativeLibs="true">
+    <activity-alias android:name="org.pardeh.player.LauncherClassic" android:targetActivity="org.pardeh.player.MainActivity"
+        android:label="Windows Media Player" android:icon="@mipmap/ic_launcher_classic" android:roundIcon="@mipmap/ic_launcher_classic_round"
+        android:enabled="${classicEnabled}" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name="org.pardeh.player.LauncherPardeh" android:targetActivity="org.pardeh.player.MainActivity"
+        android:label="Pardeh" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"
+        android:enabled="${pardehEnabled}" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity-alias>
+  </application>
+  <!-- Reading the user's own media. -->
+  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <!-- TODO(android): media notification and background playback. -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+</manifest>
