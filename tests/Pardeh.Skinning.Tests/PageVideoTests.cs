@@ -169,7 +169,15 @@ public sealed class PageOpenTests
         using var site = new Site();
         using var engine = new NavaEngine { Muted = true };
         using var prepared = engine.PrepareOpen(site.Home + "/watch", new NetworkOptions(), Cancel);
-        engine.OpenPrepared(prepared);
+        try
+        {
+            engine.OpenPrepared(prepared);
+        }
+        catch (System.Runtime.InteropServices.COMException e) when (e.HResult == unchecked((int)0x80070490))
+        {
+            Assert.Skip("needs an audio output device"); // "element not found": a build server has none
+        }
+
         Assert.Equal(2, engine.Duration.TotalSeconds, 0.1);
     }
 

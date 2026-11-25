@@ -25,7 +25,8 @@ The Windows 11 Widgets board widget is not part of these packages.
 ## Try the build without releasing
 
 **Actions > Release > Run workflow** builds everything and releases nothing; download the packages from the run's page.
-The same happens when a push to `main` changes the workflow or the packaging scripts. These builds are numbered 0.0.1.
+The same happens when a push to `main` changes the workflow, the packaging scripts or the tests. These builds are numbered
+0.0.1.
 
 ## Android signing
 

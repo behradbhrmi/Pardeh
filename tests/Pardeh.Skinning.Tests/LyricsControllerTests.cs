@@ -75,11 +75,18 @@ public sealed class LyricsControllerTests : IDisposable
     [Fact]
     public async Task Loads_the_lyrics_of_a_new_track_in_the_background()
     {
-        var controller = Create(_ => Four());
+        // The source waits until "loading" has been seen: an instant one could finish before the check.
+        using var seen = new ManualResetEventSlim();
+        var controller = Create(_ =>
+        {
+            seen.Wait(TimeSpan.FromSeconds(10));
+            return Four();
+        });
         Assert.Null(controller.Current);
 
         _playback.Play(Track("one"));
         Assert.True(controller.IsLoading);
+        seen.Set();
         // The event is raised just after the lyrics appear: wait for both (waiting for the lyrics alone raced).
         await WaitUntil(() => controller.Current is not null && _events.Contains(LyricsChangeKind.Lyrics));
 

@@ -11,6 +11,7 @@ on:
       - ".github/workflows/release.yml"
       - "scripts/publish*.ps1"
       - "scripts/get-ffmpeg*.ps1"
+      - "tests/**"
   workflow_dispatch:
 
 permissions:
