@@ -4,8 +4,8 @@
 #   .\scripts\release-android-arm64.ps1 -Install -Serial R58M123ABC     pick one device when several are connected
 #   .\scripts\release-android-arm64.ps1 -ClassicBranding $true          build with the classic launcher name and icon
 # Needs the keystore at $HOME\.pardeh\keystore.properties (see docs/android-build.md) and the FFmpeg libs
-# (scripts\get-ffmpeg-android.ps1). To update an installed app the versionCode (ApplicationVersion in
-# src\Pardeh.Android\Pardeh.Android.csproj) must be higher than the installed one: bump it for every release you hand out.
+# (scripts\get-ffmpeg-android.ps1). The version comes from the latest vX.Y.Z git tag (see publish-android.ps1);
+# Android does not install a lower versionCode over a higher one.
 param(
     [switch]$Install,
     [string]$Serial = "",

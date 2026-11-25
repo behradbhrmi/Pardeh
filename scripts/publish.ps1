@@ -42,6 +42,7 @@ if ($forbidden) { throw "Refusing to package third-party assets: $($forbidden.Fu
 Copy-Item (Join-Path $PSScriptRoot "install.ps1") $out
 Copy-Item (Join-Path $PSScriptRoot "uninstall.ps1") $out
 Copy-Item (Join-Path $root "README.md") $out -ErrorAction SilentlyContinue
+Copy-Item (Join-Path $root "LICENSE") $out
 
 # The Windows 11 Widgets board widget: its own signed package, installed by install.ps1 together with the app.
 if (-not $SkipWidget) {
@@ -52,4 +53,5 @@ if (-not $SkipWidget) {
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path "$out\*" -DestinationPath $zip
 Write-Host "Package: $zip"
-Write-Host "Install: unzip it, then right-click install.ps1 > Run with PowerShell (the app itself needs no administrator rights). It also installs the Windows 11 Widgets board widget (Windows asks once for administrator rights to trust it)."
+Write-Host "Install: unzip it, then right-click install.ps1 > Run with PowerShell (the app itself needs no administrator rights)."
+if (-not $SkipWidget) { Write-Host "It also installs the Windows 11 Widgets board widget (Windows asks once for administrator rights to trust it)." }

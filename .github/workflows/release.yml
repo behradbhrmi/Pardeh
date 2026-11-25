@@ -1,0 +1,169 @@
+# Builds the Windows and Android packages. Pushing a tag like v1.2.0 publishes them as a GitHub release.
+# A run without such a tag (a change to this file or the packaging scripts, or "Run workflow") only builds:
+# the packages stay with the run as artifacts and nothing is released. See docs/releasing.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+    branches: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - "scripts/publish*.ps1"
+      - "scripts/get-ffmpeg*.ps1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 11.0.x
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME -replace '^v', '' } else { '0.0.1' }
+          if ($version -notmatch '^\d{1,3}\.\d{1,3}\.\d{1,3}$') { throw "A release tag must look like v1.2.3, not '$env:GITHUB_REF_NAME'." }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Download FFmpeg
+        shell: pwsh
+        run: ./scripts/get-ffmpeg.ps1
+
+      - name: Test
+        run: dotnet run --project tests/Pardeh.Skinning.Tests
+
+      - name: Package
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          ./scripts/publish.ps1 -Version $env:VERSION -SkipWidget
+          $folder = "dist/Pardeh-$env:VERSION-win-x64"
+          foreach ($needed in 'Pardeh.exe', 'LICENSE', 'ffmpeg/avcodec-62.dll', 'ffmpeg/LICENSE.txt') {
+            if (-not (Test-Path "$folder/$needed")) { throw "The package lacks $needed" }
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-windows
+          path: dist/*.zip
+          if-no-files-found: error
+
+  android:
+    name: Android arm64
+    runs-on: windows-latest
+    steps:
+      # Without the signing secrets there is nothing to build: an APK signed with a throwaway key
+      # could never be updated by a later release.
+      - name: Look for the signing key
+        id: key
+        shell: pwsh
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          $present = [bool]$env:KEYSTORE
+          "present=$($present.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if (-not $present) { Write-Output "::warning::No Android signing secrets: the APK is not built. See docs/releasing.md." }
+
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.present == 'true'
+      - uses: actions/setup-dotnet@v6
+        if: steps.key.outputs.present == 'true'
+        with:
+          dotnet-version: 11.0.x
+      - uses: actions/setup-java@v6
+        if: steps.key.outputs.present == 'true'
+        with:
+          distribution: microsoft
+          java-version: "21"
+
+      - name: Android workload and SDK parts
+        if: steps.key.outputs.present == 'true'
+        shell: pwsh
+        run: |
+          dotnet workload install android
+          if ($LASTEXITCODE -ne 0) { throw "workload install failed" }
+          dotnet build src/Pardeh.Android -t:InstallAndroidDependencies -f net11.0-android `
+            "-p:AndroidSdkDirectory=$env:ANDROID_HOME" "-p:JavaSdkDirectory=$env:JAVA_HOME" -p:AcceptAndroidSDKLicenses=True
+          if ($LASTEXITCODE -ne 0) { throw "installing the Android SDK parts failed" }
+
+      - name: Download FFmpeg
+        if: steps.key.outputs.present == 'true'
+        shell: pwsh
+        run: ./scripts/get-ffmpeg-android.ps1
+
+      - name: Build and sign the APK
+        if: steps.key.outputs.present == 'true'
+        shell: pwsh
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME -replace '^v', '' } else { '0.0.1' }
+          $keystore = Join-Path $env:RUNNER_TEMP 'release.keystore'
+          $properties = Join-Path $env:RUNNER_TEMP 'keystore.properties'
+          try {
+            [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:KEYSTORE))
+            Set-Content $properties "storeFile=$keystore", "storePassword=$env:STORE_PASSWORD", "keyAlias=$env:KEY_ALIAS", "keyPassword=$env:KEY_PASSWORD"
+            ./scripts/publish-android.ps1 -Abi arm64-v8a -Version $version -KeystoreProperties $properties `
+              -AndroidSdk $env:ANDROID_HOME -JavaSdk $env:JAVA_HOME
+          }
+          finally {
+            Remove-Item $keystore, $properties -Force -ErrorAction SilentlyContinue
+          }
+
+      - uses: actions/upload-artifact@v7
+        if: steps.key.outputs.present == 'true'
+        with:
+          name: package-android
+          path: artifacts/android/*.apk
+          if-no-files-found: error
+
+  release:
+    name: Publish the release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: packages
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd packages
+          sha256sum -- * > ../SHA256SUMS.txt
+          mv ../SHA256SUMS.txt .
+          {
+            echo "## Downloads"
+            echo
+            echo "- **Windows 10 / 11 (x64):** the \`win-x64.zip\` file. Needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0). Unzip it and run \`install.ps1\`, or just start \`Pardeh.exe\`."
+            if ls ./*.apk >/dev/null 2>&1; then
+              echo "- **Android 7.0 or newer (arm64):** the \`.apk\` file."
+            else
+              echo "- **Android:** no APK in this release."
+            fi
+            echo "- \`SHA256SUMS.txt\` lists the checksums."
+            echo
+            echo "Pardeh is GPL-3.0 software; the source is this tag. The packages include LGPL builds of [FFmpeg](https://ffmpeg.org/) 8.1 from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) (Windows) and [tqk2811/FFmpegBuild](https://github.com/tqk2811/FFmpegBuild) (Android)."
+          } > ../notes.md
+          gh release create "$TAG" ./* --verify-tag --title "Pardeh ${TAG#v}" --notes-file ../notes.md --generate-notes

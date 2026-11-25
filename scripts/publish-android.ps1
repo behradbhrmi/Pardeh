@@ -4,6 +4,7 @@
 # environment variables of the child process and are never printed. See docs/android-build.md.
 param(
     [string]$Abi = "arm64-v8a",                 # arm64-v8a | x86_64 | all (builds both)
+    [string]$Version = "",                      # e.g. 1.2.0; default: the latest vX.Y.Z git tag
     [bool]$ClassicBranding = $false,
     [string]$KeystoreProperties = $(if ($env:PARDEH_KEYSTORE_PROPERTIES) { $env:PARDEH_KEYSTORE_PROPERTIES } else { Join-Path $HOME ".pardeh\keystore.properties" }),
     [string]$AndroidSdk = $(if ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA "Android\Sdk" }),
@@ -41,20 +42,32 @@ if (-not (Test-Path $props["storeFile"])) { throw "Keystore not found: $($props[
 $apksigner = Get-ChildItem (Join-Path $AndroidSdk "build-tools") -Directory -ErrorAction SilentlyContinue | Sort-Object { [version]($_.Name -replace '[^0-9.].*$', '') } -Descending |
     ForEach-Object { Join-Path $_.FullName "apksigner.bat" } | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-# version from the csproj
-$version = ([xml](Get-Content (Join-Path $project "Pardeh.Android.csproj"))).Project.PropertyGroup.ApplicationDisplayVersion | Where-Object { $_ } | Select-Object -First 1
-if (-not $version) { $version = "0.0.0" }
-# Stamp every build: versionCode = git commit count (always rises), display version = <csproj base>.<count>+<short hash>.
-$versionCode = 1
+# Version. A release version X.Y.Z gets versionCode X*1000000 + Y*1000 + Z, so a later release always installs over an
+# earlier one. Without -Version the latest "vX.Y.Z" tag is used; with no such tag, the csproj base and the commit count.
 $shortHash = ""
 try {
-    $count = (& git -C $root rev-list --count HEAD 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $count -match '^\d+$') { $versionCode = [int]$count }
     $shortHash = (& git -C $root rev-parse --short HEAD 2>$null)
+    if (-not $Version) {
+        $tag = (& git -C $root describe --tags --abbrev=0 --match "v*" 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $tag -match '^v(\d+\.\d+\.\d+)$') { $Version = $Matches[1] }
+    }
 } catch { }
-$baseParts = $version.Split('.')
-$version = "{0}.{1}.{2}" -f $baseParts[0], $(if ($baseParts.Count -gt 1) { $baseParts[1] } else { "0" }), $versionCode
-Write-Host "Version $version (versionCode $versionCode, commit $shortHash)"
+if ($Version) {
+    if ($Version -notmatch '^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$') { throw "-Version must look like 1.2.3 (each part 0 to 999)." }
+    $versionCode = [int]$Matches[1] * 1000000 + [int]$Matches[2] * 1000 + [int]$Matches[3]
+    if ($versionCode -lt 1) { throw "-Version must be above 0.0.0." }
+} else {
+    $base = ([xml](Get-Content (Join-Path $project "Pardeh.Android.csproj"))).Project.PropertyGroup.ApplicationDisplayVersion | Where-Object { $_ } | Select-Object -First 1
+    if (-not $base) { $base = "0.0.0" }
+    $versionCode = 1
+    try {
+        $count = (& git -C $root rev-list --count HEAD 2>$null)
+        if ($LASTEXITCODE -eq 0 -and $count -match '^\d+$') { $versionCode = [int]$count }
+    } catch { }
+    $parts = $base.Split('.')
+    $Version = "{0}.{1}.{2}" -f $parts[0], $(if ($parts.Count -gt 1) { $parts[1] } else { "0" }), $versionCode
+}
+Write-Host "Version $Version (versionCode $versionCode, commit $shortHash)"
 
 if (-not $env:JAVA_HOME) { $env:JAVA_HOME = $JavaSdk }   # apksigner needs it
 New-Item -ItemType Directory -Force $out | Out-Null

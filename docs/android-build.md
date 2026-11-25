@@ -50,7 +50,8 @@ Describe the key in `$HOME\.pardeh\keystore.properties` (or pass `-KeystorePrope
 ```
 
 The signed APK goes to `artifacts/android/`. The passwords are handed to the build through environment variables and are
-not printed. For each release you hand out, raise `ApplicationVersion` in `src/Pardeh.Android/Pardeh.Android.csproj`.
+not printed. The version comes from `-Version 1.2.0`, or else from the latest `v1.2.0` git tag; version 1.2.0 gets the
+Android version code 1002000. For releases on GitHub see [releasing.md](releasing.md).
 
 ## Branding
 

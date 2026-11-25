@@ -2,105 +2,253 @@
 
 # Pardeh
 
-A modern media player for Windows 10/11 that brings back the classic look of vintage players, starting with the 2003 "9 Series" era. Classic Windows Media Player skins (`.wmz`) load natively, scripts and all, on a modern .NET engine.
+A media player for **Windows 10 / 11** and **Android** that brings back the look of classic players, with a modern engine
+underneath. Classic Windows Media Player (`.wmz`) and Winamp (`.wsz`) skins load natively, and the built-in looks are drawn
+by Pardeh in code.
 
 > Pardeh (پرده) means *screen* and, in Persian music, a *tone*: what you watch and what you hear.
 
-## Status
+[**Download**](#download) · [Looks](#looks) · [Features](#features) · [Build from source](#build-and-run)
 
-Milestone 4: **full mode, skin mode, audio and video**.
+## Download
 
-- Loads WMP 7–11 `.wmz` / `.wms` skins: layout, bitmaps, colour-key transparency, button groups with mapping images, sliders, text, playlist, equalizer, slide-out panels, view switching.
-- Loads **Winamp 2.x classic `.wsz`** skins (main window: transport, clock, scrolling title, volume / balance / seek, shuffle / repeat, spectrum bars; no equalizer or playlist window, no `region.txt` shapes). See [docs/04](docs/04-theme-plugin-architecture.md).
-- Runs skin JScript in a sandboxed engine (Jint) against a WMP-compatible object model (`player`, `theme`, `view`, `eq` …).
-- Audio playback with **Nava**: FFmpeg decoding (Windows Media Foundation as fallback), 10-band EQ, volume/balance/mute, spectrum for visualizations, WASAPI output.
-- Video playback (FFmpeg or Media Foundation, synced to the audio clock; video without sound uses a timer clock). Skins that resize to fit the video are capped at 85% of the screen.
-- Shaped window: transparent pixels are click-through, like the original skinned players. Whole-number pixel scaling on 125–200% displays.
-- Keyboard shortcuts with keymap profiles: VLC's default keys out of the box, "Pardeh Classic" (the Windows Media Player style keys) as a second built-in, and your own profiles with an editor (Tools > Keyboard Shortcuts), import and export. Media keys work too. See [docs/17-keyboard-shortcuts.md](docs/17-keyboard-shortcuts.md). Key names elsewhere in this README may be the Pardeh Classic ones.
-- Right-click menu with a Skins submenu; dropped or added skins are copied to `%APPDATA%\Pardeh\Skins`, and the last skin is reopened on start.
-- **Full mode** (default): the classic main window with the taskbar rail, menu bar (File, View, Play, Tools, Help), Now Playing (visualization or video + playlist), and the **Media Library** (Artist / Album / Genre / Year tree, track list, double-click to play). Its art is Pardeh's own drawing of the 2003 look; images in `%APPDATA%\Pardeh\FullMode` (or `private/fullmode`) replace generated ones by file name. Switch modes with Ctrl+1 / Ctrl+2, View menu, or the skin's return button.
-- Media Library scans your Music and Videos folders (File › Add Folder to Library for more) and caches tags in `%APPDATA%\Pardeh\library.json`.
-- Not yet: Copy from CD, Copy to CD or Device, Radio Tuner, a visual Skin Chooser, Options dialog.
-- **Android** (phone skins, media session, device music): see [docs/android-build.md](docs/android-build.md).
+Packages are on the [**Releases**](https://github.com/behradbhrmi/Pardeh/releases) page. If it is empty, no release has been
+published yet: [build from source](#build-and-run).
 
-See also the [WMP skin format](docs/03-wmz-skin-format.md) and the [theme and skin architecture](docs/04-theme-plugin-architecture.md).
+| System | File | Notes |
+|---|---|---|
+| Windows 10 / 11 (x64) | `Pardeh-<version>-win-x64.zip` | Needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0). Unzip, then run `install.ps1` (no administrator rights) or just start `Pardeh.exe`. |
+| Android 7.0+ (arm64) | `Pardeh-<version>-arm64-v8a.apk` | Allow installing from your browser or file manager. A release has this file only when the Android signing key was set up. |
+
+`SHA256SUMS.txt` in each release lists the checksums.
+
+## Looks
+
+On Windows, pick one in **View > Full Mode Look** or **Tools > Options > Player**. On Android, use **Settings > Skins**.
+The previews play made-up demo tracks. All of them were rendered on Windows; the phone looks use the same interface code on
+Android, but the pictures are not captures from a device.
+
+### Windows
+
+<table>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/windows/pardeh.jpg"><img src="docs/previews/windows/pardeh.jpg" width="270" alt="Pardeh Classic"></a><br>Pardeh Classic</td>
+<td align="center" valign="top"><a href="docs/previews/windows/horizon.jpg"><img src="docs/previews/windows/horizon.jpg" width="270" alt="Horizon"></a><br>Horizon</td>
+<td align="center" valign="top"><a href="docs/previews/windows/luna.jpg"><img src="docs/previews/windows/luna.jpg" width="270" alt="Luna"></a><br>Luna</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/windows/fluent.jpg"><img src="docs/previews/windows/fluent.jpg" width="270" alt="Fluent"></a><br>Fluent</td>
+<td align="center" valign="top"><a href="docs/previews/windows/ember.jpg"><img src="docs/previews/windows/ember.jpg" width="270" alt="Ember"></a><br>Ember</td>
+<td align="center" valign="top"><a href="docs/previews/windows/aero10.jpg"><img src="docs/previews/windows/aero10.jpg" width="270" alt="Pardeh Ten"></a><br>Pardeh Ten</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/windows/zune.jpg"><img src="docs/previews/windows/zune.jpg" width="270" alt="Zune HD (PC)"></a><br>Zune HD (PC)</td>
+<td align="center" valign="top"><a href="docs/previews/windows/wm6.jpg"><img src="docs/previews/windows/wm6.jpg" width="270" alt="Windows Mobile 6 (PC)"></a><br>Windows Mobile 6 (PC)</td>
+<td align="center" valign="top"><a href="docs/previews/windows/metro.jpg"><img src="docs/previews/windows/metro.jpg" width="270" alt="Windows Phone 7 (PC)"></a><br>Windows Phone 7 (PC)</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/windows/kin.jpg"><img src="docs/previews/windows/kin.jpg" width="270" alt="Kin Two (PC)"></a><br>Kin Two (PC)</td>
+<td align="center" valign="top"><a href="docs/previews/windows/blades.jpg"><img src="docs/previews/windows/blades.jpg" width="270" alt="Xbox 360 Blades (PC)"></a><br>Xbox 360 Blades (PC)</td>
+<td align="center" valign="top"><a href="docs/previews/windows/xbox.jpg"><img src="docs/previews/windows/xbox.jpg" width="270" alt="Xbox Classic (PC)"></a><br>Xbox Classic (PC)</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/windows/walkman.jpg"><img src="docs/previews/windows/walkman.jpg" width="270" alt="Walkman Orange (PC)"></a><br>Walkman Orange (PC)</td>
+<td align="center" valign="top"><a href="docs/previews/windows/winamp.jpg"><img src="docs/previews/windows/winamp.jpg" width="270" alt="Winamp (PC)"></a><br>Winamp (PC)</td>
+<td align="center" valign="top"><a href="docs/previews/windows/groove.jpg"><img src="docs/previews/windows/groove.jpg" width="270" alt="Groove (PC)"></a><br>Groove (PC)</td>
+</tr>
+</table>
+
+### Android
+
+<table>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/android/luna.jpg"><img src="docs/previews/android/luna.jpg" width="190" alt="Luna Phone"></a><br>Luna Phone</td>
+<td align="center" valign="top"><a href="docs/previews/android/luna-plus.jpg"><img src="docs/previews/android/luna-plus.jpg" width="190" alt="Luna Phone Plus"></a><br>Luna Phone Plus</td>
+<td align="center" valign="top"><a href="docs/previews/android/fluent.jpg"><img src="docs/previews/android/fluent.jpg" width="190" alt="Fluent Phone"></a><br>Fluent Phone</td>
+<td align="center" valign="top"><a href="docs/previews/android/ember.jpg"><img src="docs/previews/android/ember.jpg" width="190" alt="Ember Phone"></a><br>Ember Phone</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/android/horizon.jpg"><img src="docs/previews/android/horizon.jpg" width="190" alt="Horizon Phone"></a><br>Horizon Phone</td>
+<td align="center" valign="top"><a href="docs/previews/android/aero10.jpg"><img src="docs/previews/android/aero10.jpg" width="190" alt="Pardeh Ten Phone"></a><br>Pardeh Ten Phone</td>
+<td align="center" valign="top"><a href="docs/previews/android/glass.jpg"><img src="docs/previews/android/glass.jpg" width="190" alt="Pardeh Glass"></a><br>Pardeh Glass</td>
+<td align="center" valign="top"><a href="docs/previews/android/winamp.jpg"><img src="docs/previews/android/winamp.jpg" width="190" alt="Winamp Phone"></a><br>Winamp Phone</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/android/groove.jpg"><img src="docs/previews/android/groove.jpg" width="190" alt="Groove Phone"></a><br>Groove Phone</td>
+<td align="center" valign="top"><a href="docs/previews/android/wm6.jpg"><img src="docs/previews/android/wm6.jpg" width="190" alt="Windows Mobile 6"></a><br>Windows Mobile 6</td>
+<td align="center" valign="top"><a href="docs/previews/android/metro.jpg"><img src="docs/previews/android/metro.jpg" width="190" alt="Windows Phone 7"></a><br>Windows Phone 7</td>
+<td align="center" valign="top"><a href="docs/previews/android/zune.jpg"><img src="docs/previews/android/zune.jpg" width="190" alt="Zune HD"></a><br>Zune HD</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/android/kin.jpg"><img src="docs/previews/android/kin.jpg" width="190" alt="Kin Two"></a><br>Kin Two</td>
+<td align="center" valign="top"><a href="docs/previews/android/blades.jpg"><img src="docs/previews/android/blades.jpg" width="190" alt="Xbox 360 Blades"></a><br>Xbox 360 Blades</td>
+<td align="center" valign="top"><a href="docs/previews/android/xbox.jpg"><img src="docs/previews/android/xbox.jpg" width="190" alt="Xbox Classic"></a><br>Xbox Classic</td>
+<td align="center" valign="top"><a href="docs/previews/android/walkman.jpg"><img src="docs/previews/android/walkman.jpg" width="190" alt="Walkman Orange"></a><br>Walkman Orange</td>
+</tr>
+</table>
+
+### Colours
+
+**Pardeh Glass** can be recoloured: **Settings > Appearance** has these nine presets, plus hue, saturation and brightness
+sliders. The Pardeh logo can follow the colour too.
+
+<table>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-royal.jpg"><img src="docs/previews/colors/glass-royal.jpg" width="150" alt="Royal blue"></a><br>Royal blue</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-teal.jpg"><img src="docs/previews/colors/glass-teal.jpg" width="150" alt="Teal"></a><br>Teal</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-emerald.jpg"><img src="docs/previews/colors/glass-emerald.jpg" width="150" alt="Emerald"></a><br>Emerald</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-amber.jpg"><img src="docs/previews/colors/glass-amber.jpg" width="150" alt="Amber"></a><br>Amber</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-orange.jpg"><img src="docs/previews/colors/glass-orange.jpg" width="150" alt="Orange"></a><br>Orange</td>
+</tr>
+<tr>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-crimson.jpg"><img src="docs/previews/colors/glass-crimson.jpg" width="150" alt="Crimson"></a><br>Crimson</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-rose.jpg"><img src="docs/previews/colors/glass-rose.jpg" width="150" alt="Rose"></a><br>Rose</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-violet.jpg"><img src="docs/previews/colors/glass-violet.jpg" width="150" alt="Violet"></a><br>Violet</td>
+<td align="center" valign="top"><a href="docs/previews/colors/glass-graphite.jpg"><img src="docs/previews/colors/glass-graphite.jpg" width="150" alt="Graphite"></a><br>Graphite</td>
+<td></td>
+</tr>
+</table>
+
+Your own copy of the original 2003 full mode can also be imported from Windows XP files that you have
+([how it works](#skins)). Pardeh does not ship it, so there is no preview.
+
+## Features
+
+### Playback
+
+- Audio and video with **Nava**, Pardeh's engine: FFmpeg decoding, with Windows Media Foundation as a fallback on Windows.
+- 10-band equalizer with presets, balance, and visualizations.
+- Gapless playback for audio files with the same sample rate, and crossfade.
+- Volume levelling from ReplayGain tags; untagged files are measured in the background.
+- Sleep timer, A-B repeat, named markers on the seek bar, play speed, and resume for longer videos.
+- Video with embedded and external subtitles, subtitle delay and aspect ratio settings.
+
+### Online media
+
+- Open or drop the address of a media file or stream: HTTP(S) and HLS, plus protocols such as RTSP, RTMP and SRT that the
+  FFmpeg build supports.
+- Choose the online video quality for HLS (360p to 1080p; 720p by default). Dropped connections are retried.
+- A web page's address plays **only** when the page itself publishes the address of its video. Many sites, YouTube among
+  them, do not.
+- Addresses that contain a password or token are not saved in lists or written to the log.
+- DASH is weak: some streams open slowly or do not resume after seeking.
+
+### Library and queue
+
+- Library by artist, album, genre and year; sorting, filters and favourites.
+- Queue tools: sort, reverse, shuffle, remove duplicates, filter. The last queue comes back paused.
+- Playlists, including downloaded `.m3u`, `.pls`, `.asx`, `.xspf` and `.wpl` lists of network addresses.
+
+### Lyrics, chords and tabs
+
+- Timed or plain lyrics from tags, from files next to the song, or typed in yourself, with right-to-left text.
+- Chords above the words (ChordPro) with transposing, and guitar tabs.
+- Optional online lookup through LRCLIB, **off** until you turn it on.
+
+### On Windows
+
+- Full mode and skin mode, three window styles, lyrics over the picture or in their own window.
+- Keymap profiles: VLC's keys by default, a Windows Media Player style set, or your own, with import and export. See
+  [keyboard shortcuts](docs/17-keyboard-shortcuts.md).
+- A desktop mini player, media keys and file type registration.
+- A Windows 11 Widgets board widget can be built from source (`scripts/build-widget.ps1`); the release packages leave it out.
+
+### On Android
+
+- Media session and notification controls, an optional custom notification card, and a customisable home-screen widget.
+- Device music and folders you pick; links shared or opened from other apps.
+- Swipe between pages, playback tools sheet, landscape layouts.
+- Releases are tested far less on real phones than the Windows app: please report what you find.
+
+Not built: Copy from CD, Copy to CD or Device, and the Radio Tuner.
+
+## Skins
+
+- **Windows Media Player 7 to 11 `.wmz` / `.wms`:** layout, bitmaps, colour-key transparency, buttons, sliders, text,
+  playlist, equalizer, slide-out panels and view switching. Skin scripts run in a sandboxed engine (Jint) against a
+  WMP-compatible object model. See the [format notes](docs/03-wmz-skin-format.md).
+- **Winamp 2.x classic `.wsz`:** the main window only (no equalizer or playlist window, no `region.txt` shapes).
+- Drag a skin onto the player to switch to it. It is copied to `%APPDATA%\Pardeh\Skins`.
+- **Original 2003 full mode:** `File > Import from Windows XP…` reads it from a Windows XP copy of your own. The imported
+  files stay on your PC.
+
+Pardeh ships no Microsoft, Winamp or other third-party skins. The skin loaders are plug-ins; see the
+[architecture](docs/04-theme-plugin-architecture.md).
 
 ## Build and run
 
-Built on .NET 11 and Avalonia 12.1.5 (Skia). Requires the .NET 11 SDK. For every audio/video format, fetch FFmpeg once (LGPL build, about 80 MB, not committed):
+Needs the .NET 11 SDK. Built with Avalonia 12.1.5 (Skia). For every audio and video format on Windows, fetch FFmpeg once
+(an LGPL build, not committed); without it Pardeh uses Windows Media Foundation (MP3, WMA, WAV, AAC, FLAC, MP4, WMV …).
 
 ```powershell
 .\scripts\get-ffmpeg.ps1
+dotnet build src/Pardeh.App
+dotnet run --project src/Pardeh.App -- path\to\Skin.wmz [media files...]
 ```
 
-Without it, Pardeh falls back to Windows Media Foundation (MP3, WMA, WAV, AAC, FLAC, MP4, WMV …).
+With no skin argument Pardeh opens its full mode, or the last skin you used. Building the whole solution (`Pardeh.slnx`)
+also builds the Android app, which needs the Android tools: see [building for Android](docs/android-build.md).
+
+**Package for Windows** (`dist\Pardeh-<version>-win-x64.zip`):
 
 ```powershell
-dotnet build Pardeh.slnx
-dotnet run --project src/Pardeh.App -- path\to\Skin.wmz [music files...]
+.\scripts\publish.ps1 -Version 1.0.0 -SkipWidget
 ```
 
-With no skin argument, Pardeh uses the first `.wmz` in `%APPDATA%\Pardeh\Skins`, or (for development) `private/skins/` in the repo.
-
-- Drag media files onto the player to play them; drag a `.wmz` or Winamp `.wsz` onto it to switch skins.
-- Online video and radio: open or drop the direct address of a media file or stream (HLS included). A web page's address plays only when the page publishes its video's address; many sites, YouTube among them, do not.
-- Right-click the skin for Open File, Choose Skin and Exit.
-
-## Package and install
-
-```powershell
-.\scripts\get-ffmpeg.ps1          # once
-.\scripts\publish.ps1 -Version 0.1.0
-```
-
-This makes `dist\Pardeh-0.1.0-win-x64.zip` (needs the .NET 11 desktop runtime). Unzip it and run `install.ps1` (no admin rights): Pardeh goes to `%LOCALAPPDATA%\Programs\Pardeh` with a Start menu shortcut and an uninstall entry in Settings › Apps. Tools › Options › File Types registers it for media files.
-
-## Tests
+**Tests** (use `dotnet run`; `dotnet test` does not work with this test runner):
 
 ```powershell
 dotnet run --project tests/Pardeh.Skinning.Tests
 ```
 
-Tests that need a real WMP skin look for `private/skins/9SeriesDefault.wmz` and are skipped when it's missing.
+Tests that need reference skins, FFmpeg or the internet are skipped when those are missing or not enabled.
 
-## Third-party skins
+**Releases** are built by GitHub Actions when a version tag is pushed: see [releasing](docs/releasing.md).
 
-Pardeh ships no Microsoft, Winamp or other third-party skins (the Winamp tests draw a tiny synthetic `.wsz` in code). The `private/` folder is git-ignored. Keep reference skins and captures there.
+## Projects
+
+| Project | Purpose |
+| --- | --- |
+| `Pardeh.Core` | Player model: playlist, transport, library, lyrics, keymaps, network addresses |
+| `Pardeh.Nava` | Media engine: decoding, equalizer, spectrum, audio output, video timed to the audio clock |
+| `Pardeh.Skinning` | Skin loaders, element runtime, script host, WMP object model (no UI dependency) |
+| `Pardeh.UI` | The shared interface and built-in looks |
+| `Pardeh.App` | Windows desktop app |
+| `Pardeh.Android` | Android app |
+| `Pardeh.Widgets` | Windows 11 Widgets board provider |
+
+## Diagnostics
+
+Environment variables for development:
+
+- `PARDEH_SNAPSHOT=out.png` (and `PARDEH_SNAPSHOT_DELAY=seconds`): renders the window to a PNG after start, without needing focus.
+- `PARDEH_SNAPSHOT_MENU=View` or `PARDEH_SNAPSHOT_DIALOG=options/2`, with `PARDEH_SNAPSHOT`: renders a menu or dialog.
+- `PARDEH_FULLMODE=<look>`: forces a look for one run, for example `luna`, `zune` or `glass-phone`.
+- `PARDEH_GLASS_TINT=amber`: forces a Pardeh Glass colour.
+- `PARDEH_DATA_DIR=folder`: uses this folder instead of `%APPDATA%\Pardeh`.
+- `PARDEH_LIBRARY_FOLDERS=a;b`: scans these folders instead of Music and Videos.
+- `PARDEH_MUTE=1`: starts muted. `PARDEH_NO_FFMPEG=1`: uses the Media Foundation decoders. `PARDEH_DIAG=1`: logs player state.
+- Log file: `%APPDATA%\Pardeh\pardeh.log`.
 
 ## Third-party libraries
 
 - **.NET packages:** Avalonia, FFmpeg.AutoGen and NAudio (MIT), Jint (BSD-2-Clause), TagLibSharp (LGPL-2.1). The optional
   Windows 11 widget also uses the Windows App SDK, under Microsoft's license.
 - **Icons:** some come from Microsoft's Fluent UI System Icons (MIT).
-- **FFmpeg** is used as dynamically loaded shared libraries under the LGPL; Pardeh does not modify it. Windows: [BtbN builds](https://github.com/BtbN/FFmpeg-Builds) (`scripts/get-ffmpeg.ps1`). Android: LGPL-3.0 builds from [tqk2811/FFmpegBuild](https://github.com/tqk2811/FFmpegBuild) (`scripts/get-ffmpeg-android.ps1`); source is at [ffmpeg.org](https://ffmpeg.org/download.html) (tag n8.1.2) and the license text ships next to the libraries. You can replace the `.so` files with your own build.
+- **FFmpeg** is used as dynamically loaded shared libraries under the LGPL; Pardeh does not modify it. Windows:
+  [BtbN builds](https://github.com/BtbN/FFmpeg-Builds) (`scripts/get-ffmpeg.ps1`). Android: LGPL-3.0 builds from
+  [tqk2811/FFmpegBuild](https://github.com/tqk2811/FFmpegBuild) (`scripts/get-ffmpeg-android.ps1`). The source is at
+  [ffmpeg.org](https://ffmpeg.org/download.html). You can replace the libraries with your own build.
 
 ## Design credits
 
-- **Ember** (a built-in full mode) adapts the design of the [VLC Redesign by Juxtopposed](https://www.juxtopposed.com/), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Pardeh's version is redrawn; it uses no VLC code, artwork or trademarks.
-- **Horizon** follows the layout of the community [Windows Media Player 9 web app clone](https://github.com/rmellis/Windows-Media-Player-9-WebApp-Clone); its art is Pardeh's own.
-- The Pardeh logo is AI-generated art. A personal logo can be used locally by placing `logo.png` in `%APPDATA%\Pardeh` (never committed or packaged).
-
-## Projects
-
-| Project | Purpose |
-| --- | --- |
-| `Pardeh.Core` | Player model: playlist, transport state machine, equalizer settings |
-| `Pardeh.Nava` | Media engine: FFmpeg decoding (Media Foundation fallback), 10-band EQ, spectrum, WASAPI output, video frames timed to the audio clock |
-| `Pardeh.Skinning` | Skin loader, element runtime, script host, WMP object model (no UI dependency) |
-| `Pardeh.App` | Avalonia desktop app: skin window, pixel renderer, dialogs |
-
-## Diagnostics
-
-- `PARDEH_SNAPSHOT=out.png` (optional `PARDEH_SNAPSHOT_DELAY=seconds`): renders the skin to a PNG after start, without needing window focus.
-- `PARDEH_SNAPSHOT_MENU=View` (or `View/7` to also open item 7's submenu), with `PARDEH_SNAPSHOT`: opens that menu and renders it to `<snapshot>-menu.png` (and `-submenu.png`, `-menu-selected.png`). Popup bitmaps don't show hover highlights or submenu gutters reliably; check those in the log or by hand.
-- `PARDEH_FULLMODE=horizon|pardeh|wmp9`: forces a full mode look for this run (normally chosen in Tools › Options › Player or View › Full Mode Look).
-- `PARDEH_SNAPSHOT_DIALOG=options/2` (Options on tab 2) or `prompt`, with `PARDEH_SNAPSHOT`: opens that dialog and renders it to `<snapshot>-dialog.png`.
-- `PARDEH_DIAG=1`: logs player and visualization state once per second.
-- `PARDEH_LIBRARY_FOLDERS=a;b`: scan these folders instead of Music and Videos.
-- `PARDEH_DATA_DIR=folder`: use this folder instead of `%APPDATA%\Pardeh`, so test runs and snapshots leave your settings and library alone.
-- `PARDEH_MUTE=1`: start muted (silent snapshot runs).
-- `PARDEH_NO_FFMPEG=1`: force the Media Foundation decoders.
-- Log file: `%APPDATA%\Pardeh\pardeh.log`.
+- **Ember** adapts the design of the [VLC Redesign by Juxtopposed](https://www.juxtopposed.com/), licensed
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Pardeh's version is redrawn; it uses no VLC code, artwork or
+  trademarks.
+- **Horizon** follows the layout of the community
+  [Windows Media Player 9 web app clone](https://github.com/rmellis/Windows-Media-Player-9-WebApp-Clone); its art is
+  Pardeh's own.
+- The Pardeh logo is AI-generated art. A personal logo can be used locally by placing `logo.png` in `%APPDATA%\Pardeh`.
 
 ## License
 
@@ -108,5 +256,5 @@ Pardeh is free software under the [GNU General Public License, version 3](LICENS
 its code, you must provide the source under the same license. It comes with no warranty. Third-party libraries and designs
 keep their own licenses (above).
 
-Pardeh is an independent project. It is not affiliated with or endorsed by Microsoft, Winamp or any other company whose
-products it takes inspiration from. Their names and trademarks belong to their owners.
+Pardeh is an independent project. It is not affiliated with or endorsed by Microsoft, Winamp, Sony or any other company
+whose products inspired a look. Their names and trademarks belong to their owners.
