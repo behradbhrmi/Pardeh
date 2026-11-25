@@ -1,6 +1,5 @@
 using System.Globalization;
 using Avalonia;
-using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Pardeh.Core.LyricsKit;
 using Pardeh.Skinning.Imaging;
@@ -53,26 +52,8 @@ internal sealed class FakeFeed : ILyricsFeed
 [Collection("Avalonia rendering")]
 public sealed class LyricsViewTests
 {
-    private static readonly object Gate = new();
-    private static bool _platformUp;
 
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     public static TheoryData<string> Looks => [.. PhoneSkin.Keys];
 

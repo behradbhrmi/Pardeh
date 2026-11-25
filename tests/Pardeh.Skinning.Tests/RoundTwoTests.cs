@@ -147,7 +147,7 @@ public sealed class RoundTwoTests
     [Fact]
     public void The_logo_takes_the_skin_hue()
     {
-        LogoTests.EnsurePlatform(); // a decode without it fails, and LogoImage remembers the failure
+        TestPlatform.Ensure(); // a decode without it fails, and LogoImage remembers the failure
         var logo = LogoImage.Get(LogoVariant.Curtain);
         Assert.NotNull(logo);
         var tinted = logo!.WithHue(20, 1, 1); // an orange skin

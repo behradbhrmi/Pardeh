@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Pardeh.UI.Rendering;
@@ -36,13 +35,7 @@ public sealed class LyricsIconSheet
     {
         if (Environment.GetEnvironmentVariable("PARDEH_LYRICS_ICONS") is not { Length: > 0 } file)
             return;
-        try
-        {
-            AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-        }
-        catch (InvalidOperationException)
-        {
-        }
+        TestPlatform.Ensure();
 
         var keys = (Environment.GetEnvironmentVariable("PARDEH_LYRICS_KEYS") ?? "lyrics,note,heart").Split(',');
         var sheet = new Sheet { Keys = keys };

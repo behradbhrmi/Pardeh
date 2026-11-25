@@ -1,6 +1,5 @@
 using System.Text;
 using Avalonia;
-using Avalonia.Headless;
 using Avalonia.Media;
 using Pardeh.Skinning.Imaging;
 using Pardeh.Skinning.Model;
@@ -19,27 +18,8 @@ namespace Pardeh.Skinning.Tests;
 [Collection("Avalonia rendering")]
 public sealed class HiResArtTests
 {
-    private static readonly object Gate = new();
-    private static bool _platformUp;
 
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-                // Another test class set the platform up first.
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     private static SkinBitmap Solid(int w, int h, int scale = 1)
     {

@@ -1,6 +1,5 @@
 using System.Globalization;
 using Avalonia;
-using Avalonia.Headless;
 using Pardeh.UI;
 using Pardeh.Core.Library;
 using Pardeh.Skinning.Model;
@@ -16,8 +15,6 @@ namespace Pardeh.Skinning.Tests;
 [Collection("Avalonia rendering")]
 public sealed class CultureTests : IDisposable
 {
-    private static readonly object Gate = new();
-    private static bool _platformUp;
 
     private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
     private readonly CultureInfo _uiCulture = CultureInfo.CurrentUICulture;
@@ -32,24 +29,7 @@ public sealed class CultureTests : IDisposable
     }
 
     /// <summary>The skins draw their art into bitmaps, which needs a (headless, Skia) rendering platform.</summary>
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-                // Another test class (the icon tests) set the platform up first.
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     public static TheoryData<string> Cultures => ["fa-IR", "de-DE", "ar-SA", "en-US"];
 

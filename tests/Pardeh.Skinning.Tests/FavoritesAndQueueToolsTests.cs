@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Avalonia;
-using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.LogicalTree;
 using Pardeh.Core.Library;
@@ -23,8 +22,6 @@ namespace Pardeh.Skinning.Tests;
 [Collection("Avalonia rendering")]
 public sealed class FavoritesAndQueueToolsTests : IDisposable
 {
-    private static readonly object Gate = new();
-    private static bool _platformUp;
     private readonly int _scale = PhoneSkin.ArtScale;
     private readonly GlassPalette.Tint _tint = GlassPalette.Current;
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"pardeh-favui-{Guid.NewGuid():N}");
@@ -37,24 +34,7 @@ public sealed class FavoritesAndQueueToolsTests : IDisposable
             Directory.Delete(_folder, recursive: true);
     }
 
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-                // Another test class set the platform up first.
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     /// <summary>A host that records the menus it was asked to show and answers them from a script of choices.</summary>
     private sealed class MenuHost : ISkinHost

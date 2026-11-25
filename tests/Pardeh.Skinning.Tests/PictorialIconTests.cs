@@ -1,6 +1,5 @@
 using System.Globalization;
 using Avalonia;
-using Avalonia.Headless;
 using Avalonia.Media;
 using Pardeh.UI;
 using Pardeh.UI.FullMode;
@@ -12,8 +11,6 @@ namespace Pardeh.Skinning.Tests;
 [Collection("Avalonia rendering")]
 public sealed class PictorialIconTests : IDisposable
 {
-    private static readonly object Gate = new();
-    private static bool _platformUp;
     private readonly CultureInfo _culture = CultureInfo.CurrentCulture;
     private readonly CultureInfo _uiCulture = CultureInfo.CurrentUICulture;
 
@@ -23,24 +20,7 @@ public sealed class PictorialIconTests : IDisposable
         CultureInfo.CurrentUICulture = _uiCulture;
     }
 
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-                // Another test class already set the platform up.
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     private static byte[] Draw(string key, int size) => LunaArt.Render(size, size, g => PictorialIcons.Draw(g, key, new Rect(0, 0, size, size)));
 

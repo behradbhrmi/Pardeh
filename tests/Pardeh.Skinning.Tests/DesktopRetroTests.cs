@@ -1,5 +1,4 @@
 using Avalonia;
-using Avalonia.Headless;
 using Pardeh.Core.Playback;
 using Pardeh.Skinning.Runtime;
 using Pardeh.Skinning.Runtime.Elements;
@@ -12,26 +11,8 @@ namespace Pardeh.Skinning.Tests;
 [Collection("Avalonia rendering")]
 public sealed class DesktopRetroTests
 {
-    private static readonly object Gate = new();
-    private static bool _platformUp;
 
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     public static TheoryData<string> Looks => [.. PhoneSkin.DesktopRetro.Select(l => l.Key)];
 

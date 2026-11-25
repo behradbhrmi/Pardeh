@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using Avalonia;
-using Avalonia.Headless;
 using Pardeh.Core.Playback;
 using Pardeh.Skinning.Imaging;
 using Pardeh.Skinning.Model;
@@ -538,27 +537,8 @@ public class WinampSkinTests
 
     // ---- real rendering through the Avalonia renderer (headless Skia) ----
 
-    private static readonly object Gate = new();
-    private static bool _platformUp;
 
-    private static void EnsurePlatform()
-    {
-        lock (Gate)
-        {
-            if (_platformUp)
-                return;
-            try
-            {
-                AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
-            }
-            catch (InvalidOperationException)
-            {
-                // Another test class already set the platform up.
-            }
-
-            _platformUp = true;
-        }
-    }
+    private static void EnsurePlatform() => TestPlatform.Ensure();
 
     private static int PixelAt(byte[] bgra, int x, int y) =>
         (bgra[(y * 275 + x) * 4 + 2] << 16) | (bgra[(y * 275 + x) * 4 + 1] << 8) | bgra[(y * 275 + x) * 4];
