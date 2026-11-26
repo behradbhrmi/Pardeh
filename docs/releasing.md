@@ -13,6 +13,7 @@ The workflow runs the tests, builds the packages and publishes them on the repos
 
 | File | For |
 |---|---|
+| `Pardeh-<version>-win-x64-setup.exe` | the Windows installer (per user, .NET included; built from `scripts/installer.iss`, not code signed) |
 | `Pardeh-<version>-win-x64-standalone.zip` | Windows 10 / 11, x64, with .NET included |
 | `Pardeh-<version>-win-x64.zip` | the smaller Windows package (needs the .NET 11 Desktop Runtime) |
 | `Pardeh-<version>-arm64-v8a.apk` | Android 7.0 or newer (only with the signing secrets below) |

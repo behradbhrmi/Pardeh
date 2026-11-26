@@ -57,6 +57,9 @@ public static class AppInfo
     /// <summary>Windows: whether this copy carries its own .NET runtime.</summary>
     public static bool IsStandalone => OperatingSystem.IsWindows() && File.Exists(Path.Combine(AppContext.BaseDirectory, "coreclr.dll"));
 
+    /// <summary>Windows: whether the setup program installed this copy (it leaves its uninstaller next to the app).</summary>
+    private static bool IsInstalledBySetup => OperatingSystem.IsWindows() && File.Exists(Path.Combine(AppContext.BaseDirectory, "unins000.exe"));
+
     private static string Decoders =>
         Pardeh.Ffmpeg.FfmpegLibrary.IsAvailable ? "FFmpeg " + Pardeh.Ffmpeg.FfmpegLibrary.Version
         : OperatingSystem.IsWindows() ? "Windows Media Foundation" : "Not available";
@@ -86,7 +89,9 @@ public static class AppInfo
         var result = await UpdateCheck.Run(Http.Value, Version);
         if (result.State != UpdateState.Available)
             return result;
-        var file = OperatingSystem.IsAndroid() ? "the .apk file" : IsStandalone ? "the win-x64-standalone.zip file" : "the win-x64.zip file";
+        var file = OperatingSystem.IsAndroid() ? "the .apk file"
+            : IsInstalledBySetup ? "the win-x64-setup.exe file"
+            : IsStandalone ? "the win-x64-standalone.zip file" : "the win-x64.zip file";
         return result with { Message = $"{result.Message} Open the release page and take {file}." };
     }
 }

@@ -17,11 +17,13 @@ published yet: [build from source](#build-and-run).
 
 | System | File | Notes |
 |---|---|---|
-| Windows 10 / 11 (x64), standalone | `Pardeh-<version>-win-x64-standalone.zip` | Includes .NET: nothing else to install. Take this one if unsure. |
+| Windows 10 / 11 (x64), installer | `Pardeh-<version>-win-x64-setup.exe` | Includes .NET and needs no administrator rights. Take this one if unsure. |
+| Windows 10 / 11 (x64), standalone | `Pardeh-<version>-win-x64-standalone.zip` | Includes .NET: nothing else to install. |
 | Windows 10 / 11 (x64), small | `Pardeh-<version>-win-x64.zip` | A smaller download that needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0). |
 | Android 7.0+ (arm64) | `Pardeh-<version>-arm64-v8a.apk` | Allow installing from your browser or file manager. A release has this file only when the Android signing key was set up. |
 
-For either Windows package: unzip, then run `install.ps1` (no administrator rights) or just start `Pardeh.exe`.
+The installer is not code signed, so Windows SmartScreen may warn about it: choose **More info > Run anyway**.
+For either Windows zip: unzip, then run `install.ps1` (no administrator rights) or just start `Pardeh.exe`.
 `SHA256SUMS.txt` in each release lists the checksums. **About > Check for updates** in the app tells you when a newer
 release is out; it contacts GitHub only when you ask.
 
@@ -202,7 +204,8 @@ dotnet run --project src/Pardeh.App -- path\to\Skin.wmz [media files...]
 With no skin argument Pardeh opens its full mode, or the last skin you used. Building the whole solution (`Pardeh.slnx`)
 also builds the Android app, which needs the Android tools: see [building for Android](docs/android-build.md).
 
-**Package for Windows** (a zip in `dist\`; add `-Standalone` for the package that includes .NET):
+**Package for Windows** (a zip in `dist\`; add `-Standalone` for the package that includes .NET, or `-Installer`
+for that package and a setup program, which needs [Inno Setup](https://jrsoftware.org/isinfo.php) 6.6 or newer):
 
 ```powershell
 .\scripts\publish.ps1 -Version 1.0.0 -SkipWidget

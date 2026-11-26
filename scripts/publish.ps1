@@ -5,23 +5,38 @@
 .DESCRIPTION
     By default the package is small and needs the .NET 11 desktop runtime on the target PC
     (Pardeh-<version>-win-x64.zip). With -Standalone it carries its own runtime and needs nothing installed
-    (Pardeh-<version>-win-x64-standalone.zip). FFmpeg comes from
+    (Pardeh-<version>-win-x64-standalone.zip). -Installer builds that package and, from it, the setup program
+    (Pardeh-<version>-win-x64-setup.exe; needs Inno Setup 6.6 or newer). The app is compiled ahead of time with
+    ReadyToRun for a faster start. FFmpeg comes from
     tools\ffmpeg\win-x64 (run scripts\get-ffmpeg.ps1 first). Nothing from Windows XP is ever packaged: the script
     drops native debug symbols and refuses to produce a package that contains wmploc / skins / private files.
 
 .EXAMPLE
     .\scripts\publish.ps1 -Version 0.1.0
     .\scripts\publish.ps1 -Version 0.1.0 -Standalone
+    .\scripts\publish.ps1 -Version 0.1.0 -Installer
 #>
 param(
     [string]$Version = "0.1.0",
     [string]$Runtime = "win-x64",
     [switch]$SkipWidget,
-    [switch]$Standalone
+    [switch]$Standalone,
+    [switch]$Installer
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+if ($Installer) {
+    $Standalone = $true
+    if ($Runtime -ne "win-x64") { throw "The installer is only made for win-x64." }
+    # Look for the compiler before the long build.
+    $iscc = @(
+        (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $iscc) { throw "Inno Setup 6 is needed for -Installer: winget install JRSoftware.InnoSetup" }
+}
 $flavour = if ($Standalone) { "-standalone" } else { "" }
 $out = Join-Path $root "dist\Pardeh-$Version-$Runtime$flavour"
 $zip = "$out.zip"
@@ -33,7 +48,7 @@ if (-not (Test-Path (Join-Path $root "tools\ffmpeg\$Runtime\avcodec-62.dll"))) {
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 $selfContained = if ($Standalone) { "true" } else { "false" }
 dotnet publish (Join-Path $root "src\Pardeh.App\Pardeh.App.csproj") -c Release -r $Runtime --self-contained $selfContained `
-    -p:Version=$Version -p:PublishDir="$out\" -p:DebugType=none -nologo
+    -p:Version=$Version -p:PublishDir="$out\" -p:DebugType=none -p:PublishReadyToRun=true -nologo
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
 # The SkiaSharp / HarfBuzzSharp NuGet packages carry their native debug symbols (about 100 MB uncompressed); drop them.
@@ -47,6 +62,8 @@ if ($forbidden) { throw "Refusing to package third-party assets: $($forbidden.Fu
 
 Copy-Item (Join-Path $PSScriptRoot "install.ps1") $out
 Copy-Item (Join-Path $PSScriptRoot "uninstall.ps1") $out
+Copy-Item (Join-Path $PSScriptRoot "install-widget.ps1") $out
+Copy-Item (Join-Path $PSScriptRoot "uninstall-widget.ps1") $out
 Copy-Item (Join-Path $root "README.md") $out -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $root "LICENSE") $out
 if ($Standalone) {
@@ -68,3 +85,9 @@ Compress-Archive -Path "$out\*" -DestinationPath $zip
 Write-Host "Package: $zip"
 Write-Host "Install: unzip it, then right-click install.ps1 > Run with PowerShell (the app itself needs no administrator rights)."
 if (-not $SkipWidget) { Write-Host "It also installs the Windows 11 Widgets board widget (Windows asks once for administrator rights to trust it)." }
+
+if ($Installer) {
+    & $iscc /Qp "/DAppVersion=$Version" "/DSourceDir=$out" "/DOutputDir=$(Join-Path $root 'dist')" (Join-Path $PSScriptRoot "installer.iss")
+    if ($LASTEXITCODE -ne 0) { throw "building the installer failed" }
+    Write-Host "Installer: $(Join-Path $root "dist\Pardeh-$Version-$Runtime-setup.exe")"
+}

@@ -10,6 +10,8 @@ on:
     paths:
       - ".github/workflows/release.yml"
       - "scripts/publish*.ps1"
+      - "scripts/installer.iss"
+      - "scripts/*install*.ps1"
       - "scripts/get-ffmpeg*.ps1"
       - "tests/**"
   workflow_dispatch:
@@ -51,13 +53,27 @@ jobs:
             exit 1
           }
 
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          # The installer needs 6.6 or newer. This is the official release, pinned by its checksum.
+          $file = Join-Path $env:RUNNER_TEMP 'innosetup.exe'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $file
+          $expected = '9C73C3BAE7ED48D44112A0F48E66742C00090BDB5BEF71D9D3C056C66E97B732'
+          if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $expected) { throw "the Inno Setup download does not match its checksum" }
+          $folder = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          $setup = Start-Process $file -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', "/DIR=$folder" -Wait -PassThru
+          if ($setup.ExitCode -ne 0 -or -not (Test-Path "$folder\ISCC.exe")) { throw "installing Inno Setup failed" }
+          # publish.ps1 looks for the compiler on the path first.
+          $folder >> $env:GITHUB_PATH
+
       - name: Package
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
           ./scripts/publish.ps1 -Version $env:VERSION -SkipWidget
-          ./scripts/publish.ps1 -Version $env:VERSION -SkipWidget -Standalone
+          ./scripts/publish.ps1 -Version $env:VERSION -SkipWidget -Installer
           $small = "dist/Pardeh-$env:VERSION-win-x64"
           $standalone = "$small-standalone"
           foreach ($folder in $small, $standalone) {
@@ -70,11 +86,14 @@ jobs:
             if (-not (Test-Path "$standalone/$needed")) { throw "$standalone lacks $needed" }
           }
           if (Test-Path "$small/coreclr.dll") { throw "$small carries a .NET runtime" }
+          if (-not (Test-Path "dist/Pardeh-$env:VERSION-win-x64-setup.exe")) { throw "the installer is missing" }
 
       - uses: actions/upload-artifact@v7
         with:
           name: package-windows
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*-setup.exe
           if-no-files-found: error
 
   android:
@@ -175,8 +194,9 @@ jobs:
           {
             echo "## Downloads"
             echo
-            echo "- **Windows 10 / 11 (x64):** take one of two. Unzip it and run \`install.ps1\`, or just start \`Pardeh.exe\`."
-            echo "  - \`win-x64-standalone.zip\`: includes .NET, nothing else to install. Take this one if unsure."
+            echo "- **Windows 10 / 11 (x64):** take \`win-x64-setup.exe\` if unsure. It installs for your user, with .NET included. It is not code signed, so Windows SmartScreen may warn: choose **More info > Run anyway**."
+            echo "- Windows without an installer: unzip one of these, then run \`install.ps1\` or just start \`Pardeh.exe\`."
+            echo "  - \`win-x64-standalone.zip\`: includes .NET, nothing else to install."
             echo "  - \`win-x64.zip\`: smaller, needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0)."
             if ls ./*.apk >/dev/null 2>&1; then
               echo "- **Android 7.0 or newer (arm64):** the \`.apk\` file."

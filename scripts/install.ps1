@@ -36,7 +36,8 @@ $shortcut.WorkingDirectory = $target
 $shortcut.Description = "Pardeh media player"
 $shortcut.Save()
 
-# Settings > Apps entry.
+# Settings > Apps entry. One left by the installer (setup.exe) would point at files this script has replaced.
+Remove-Item "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F3A2C91-5D47-4E0B-A6B2-1C9D84F7E350}_is1" -Recurse -Force -ErrorAction SilentlyContinue
 $version = (Get-Item $exe).VersionInfo.ProductVersion
 $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Pardeh"
 New-Item -Path $key -Force | Out-Null
@@ -49,32 +50,8 @@ Set-ItemProperty -Path $key -Name UninstallString -Value "powershell.exe -NoProf
 Set-ItemProperty -Path $key -Name NoModify -Value 1 -Type DWord
 Set-ItemProperty -Path $key -Name NoRepair -Value 1 -Type DWord
 
-# Windows 11 Widgets board widget (part of the install; skipped on Windows 10 and when the package is not in this folder).
-$widget = Join-Path $target "Widget"
-if ((Test-Path (Join-Path $widget "PardehWidget.msix")) -and [Environment]::OSVersion.Version.Build -ge 22000) {
-    try {
-        $cerFile = Join-Path $widget "PardehWidget.cer"
-        $thumb = [Security.Cryptography.X509Certificates.X509Certificate2]::new($cerFile).Thumbprint
-        $isTrusted = { [bool](Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { $_.Thumbprint -eq $thumb }) }
-        if (-not (& $isTrusted)) {
-            # Windows only installs a package signed by a trusted publisher: trusting the widget's own certificate is the one step that needs administrator rights.
-            Write-Host "Windows will ask once for administrator rights, to trust the Pardeh widget package..."
-            $trust = "Import-Certificate -FilePath '$cerFile' -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null"
-            try { Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $trust } catch { }
-        }
-
-        if (& $isTrusted) {
-            $deps = @(); $runtime = Join-Path $widget "Microsoft.WindowsAppRuntime.2.msix"
-            if (Test-Path $runtime) { $deps = @($runtime) }
-            Add-AppxPackage -Path (Join-Path $widget "PardehWidget.msix") -DependencyPath $deps -ForceApplicationShutdown
-            Write-Host "Widget installed: open the Widgets board (Win + W) > + > Pardeh player."
-        } else {
-            Write-Warning "The widget was not installed (the administrator prompt was declined). Run install.ps1 again to add it."
-        }
-    } catch {
-        Write-Warning "The widget could not be installed: $($_.Exception.Message)"
-    }
-}
+# Windows 11 Widgets board widget (part of the install when the package is in this folder).
+& (Join-Path $target "install-widget.ps1")
 
 Write-Host "Pardeh $version installed to $target."
 Write-Host "To open media files with it: Pardeh > Tools > Options > File Types."
