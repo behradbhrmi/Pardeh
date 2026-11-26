@@ -236,7 +236,7 @@ internal static partial class PhoneSkin
             }
         }
 
-        // Cover tile: Pardeh's own artwork on a blue light-swirl tile, in a light glass frame; real art is laid over it.
+        // Cover tile: a blue light-swirl tile in a light glass frame; real art is laid over it.
         files["cover_note.png"] = Png(112, 112, g =>
         {
             using (g.PushTransform(Matrix.CreateScale(112.0 / 128, 112.0 / 128)))
@@ -257,10 +257,6 @@ internal static partial class PhoneSkin
                     g.DrawEllipse(null, Pen(WithAlpha(C("#CFEFFF"), 60), 1.0), new Point(64, 66), 60, 52);
                     g.DrawEllipse(Solid(WithAlpha(Colors.White, 230)), null, new Point(112, 22), 1.8, 1.8);
                     g.DrawEllipse(Solid(WithAlpha(Colors.White, 160)), null, new Point(20, 98), 1.3, 1.3);
-                    if (AppSettings.Current.ClassicBranding)
-                        ClassicFlag.Draw(g, new Rect(14, 12, 100, 100));
-                    else
-                        PardehLogo.Draw(g, new Rect(26, 24, 76, 76));
                 }
 
                 g.DrawRectangle(null, Pen(C("#BBDCFF"), 1.8), new RoundedRect(tile.Deflate(0.4), 9));

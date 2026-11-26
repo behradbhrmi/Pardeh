@@ -191,7 +191,7 @@ internal sealed class GlassVisualizer
         // A thin ring around the bars.
         context.DrawEllipse(null, new Pen(Fill(Alpha(Pale, 60)), 1), c, radius * 0.97, radius * 0.97);
 
-        // The glossy glass orb with the cover (or the logo) in it.
+        // The glossy glass orb with the cover in it; without one, the bare glass.
         context.DrawEllipse(Radial(0.5, 0.55, 0.5, (GlassPalette.Parse("#0F3A9F"), 0), (GlassPalette.Parse("#05185A"), 1)), new Pen(Fill(Alpha(GlassPalette.Parse("#9ED2FF"), 230)), Math.Max(1.5, orb * 0.05)), c, orb, orb);
         var inner = orb * 0.86;
         var innerBox = new Rect(c.X - inner, c.Y - inner, inner * 2, inner * 2);
@@ -199,11 +199,6 @@ internal sealed class GlassVisualizer
         {
             using (context.PushGeometryClip(new EllipseGeometry(innerBox)))
                 context.DrawImage(cover, new Rect(0, 0, cover.Size.Width, cover.Size.Height), innerBox);
-        }
-        else
-        {
-            // The logo (a picture, not a disc) sits on the dark glass, a little smaller than the glass so it does not touch the rim.
-            Pardeh.UI.FullMode.PardehLogo.Draw(context, innerBox.Deflate(inner * 0.14));
         }
 
         // The sheen: a soft highlight over the upper left of the glass.

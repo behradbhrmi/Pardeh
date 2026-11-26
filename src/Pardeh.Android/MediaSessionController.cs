@@ -398,10 +398,7 @@ internal sealed class MediaSessionController : IDisposable
             if ((AccentColor() ?? _artColor) is { } color && OperatingSystem.IsAndroidVersionAtLeast(26))
                 builder.SetColor(color).SetColorized(true);
         }
-        else if (LogoBitmap() is { } logo)
-        {
-            builder.SetLargeIcon(logo); // no cover: the app logo
-        }
+        // No cover: no large picture. Only the small status icon (ic_stat_pardeh) identifies the app.
 
         return builder.Build()!;
     }
@@ -449,17 +446,25 @@ internal sealed class MediaSessionController : IDisposable
         rv.SetTextViewText(Id("pd_title"), title);
         rv.SetTextViewText(Id("pd_artist"), artist);
         var hasArt = _art is not null && _artFor == _player.CurrentMedia?.Source;
-        var cover = hasArt ? _art : LogoBitmap();
+        var cover = hasArt ? _art : null;
+        // The background picture's own height sets the card's height (the layout is wrap_content), so it is made the card's size.
+        var density = AppContext.Resources?.DisplayMetrics?.Density ?? 2f;
+        var heightDp = layoutName.EndsWith("_small", StringComparison.Ordinal) ? 52 : 162;
+        var (bgWidth, bgHeight) = ((int)(360 * density / 2), (int)(heightDp * density));
+        rv.SetViewVisibility(Id("pd_cover"), cover is null ? global::Android.Views.ViewStates.Gone : global::Android.Views.ViewStates.Visible);
         if (cover is not null)
         {
             rv.SetImageViewBitmap(Id("pd_cover"), cover);
             // Blur: shrink hard, then stretch back with filtering.
             using var tiny = Bitmap.CreateScaledBitmap(cover, 12, 12, true)!;
-            // The picture's own height sets the card's height (the layout is wrap_content), so it is made the card's size.
-            var density = AppContext.Resources?.DisplayMetrics?.Density ?? 2f;
-            var heightDp = layoutName.EndsWith("_small", StringComparison.Ordinal) ? 52 : 162;
-            rv.SetImageViewBitmap(Id("pd_bg"), FeatheredBlur(cover, (int)(360 * density / 2), (int)(heightDp * density), 0.26f));
+            rv.SetImageViewBitmap(Id("pd_bg"), FeatheredBlur(cover, bgWidth, bgHeight, 0.26f));
             _cardColor = CardColor(tiny);
+        }
+        else
+        {
+            // No cover: a clear picture of the same size, over the skin colour.
+            rv.SetImageViewBitmap(Id("pd_bg"), Bitmap.CreateBitmap(bgWidth, bgHeight, Bitmap.Config.Argb8888!)!);
+            _cardColor = AccentColor(true) ?? 0;
         }
         void Btn(string id, string icon, string action)
         {
@@ -501,31 +506,6 @@ internal sealed class MediaSessionController : IDisposable
         return Color.HSVToColor(hsv).ToArgb();
     }
 
-    private static Bitmap? _logo;
-    private static bool _logoClassic;
-
-    private static Bitmap? LogoBitmap()
-    {
-        var classic = Pardeh.UI.AppSettings.Current.ClassicBranding;
-        if (_logo is not null && _logoClassic == classic)
-            return _logo;
-        _logoClassic = classic;
-        try
-        {
-            var id = AppContext.Resources?.GetIdentifier(classic ? "classic_flag" : "pardeh_logo", "drawable", AppContext.PackageName) ?? 0;
-            if (id == 0 || AppContext.GetDrawable(id) is not { } drawable)
-                return null;
-            var bitmap = Bitmap.CreateBitmap(256, 256, Bitmap.Config.Argb8888!)!;
-            drawable.SetBounds(0, 0, 256, 256);
-            drawable.Draw(new Canvas(bitmap));
-            return _logo = bitmap;
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
-
     private void LoadArt(MediaItem media)
     {
         if (_artFor == media.Source)
@@ -558,7 +538,7 @@ internal sealed class MediaSessionController : IDisposable
             }
             catch (Exception ex)
             {
-                _log("Media session: cover art failed: " + ex.Message); // no picture: the notification has the logo
+                _log("Media session: cover art failed: " + ex.Message); // no picture: the notification has only its small icon
             }
         });
     }
