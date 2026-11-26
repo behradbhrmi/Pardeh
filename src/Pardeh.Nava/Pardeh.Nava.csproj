@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Nava (melody, sound): Pardeh's audio. It knows nothing about pictures; see Pardeh.Nama for those. -->
   <PropertyGroup>
     <RootNamespace>Pardeh.Nava</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -11,10 +12,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+    <ProjectReference Include="..\Pardeh.Ffmpeg\Pardeh.Ffmpeg.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FFmpeg.AutoGen" Version="8.1.0" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
 
@@ -35,6 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Pardeh.Engine" />
     <InternalsVisibleTo Include="Pardeh.Skinning.Tests" />
   </ItemGroup>
 

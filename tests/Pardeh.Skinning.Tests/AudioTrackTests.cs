@@ -1,5 +1,6 @@
+using Pardeh.Engine;
 using Pardeh.Nava;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
 
 namespace Pardeh.Skinning.Tests;
 
@@ -37,7 +38,7 @@ public sealed class AudioTrackTests : IDisposable
         File.Copy(video!, movie);
         File.Copy(tone!, Path.Combine(_folder, "movie.fa.wav"));
 
-        using var engine = new NavaEngine { Muted = true };
+        using var engine = new MediaEngine { Muted = true };
         engine.Open(movie);
         Assert.Contains(engine.AudioTracks, t => t.Label == "File: movie.fa.wav");
 

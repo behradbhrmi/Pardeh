@@ -1,7 +1,9 @@
+using Pardeh.Nama;
+using Pardeh.Engine;
 using System.Text;
 using FFmpeg.AutoGen;
 using Pardeh.Nava;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
 
 namespace Pardeh.Skinning.Tests;
 
@@ -122,7 +124,7 @@ public sealed class MkvSubtitleTests : IDisposable
     {
         Assert.SkipWhen(!FfmpegLibrary.IsAvailable, $"FFmpeg not available: {FfmpegLibrary.LoadError}");
         WriteMkv();
-        using var engine = new NavaEngine();
+        using var engine = new MediaEngine();
         engine.Open(File_); // no sound in the file: the picture runs on a timer, no audio device is used
         Assert.Equal((W, H), engine.VideoSize);
         for (var i = 0; i < 100 && engine.SubtitleTracks.Count == 0; i++)

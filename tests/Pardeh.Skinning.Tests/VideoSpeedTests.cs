@@ -1,3 +1,5 @@
+using Pardeh.Ffmpeg;
+using Pardeh.Engine;
 using System.Text;
 using Pardeh.Nava;
 
@@ -19,7 +21,7 @@ public sealed class VideoSpeedTests(ITestOutputHelper output) : IDisposable
 
     private static bool Enabled => Environment.GetEnvironmentVariable("PARDEH_VIDEO_TESTS") == "1" && FfmpegAvailable();
 
-    private static bool FfmpegAvailable() => Pardeh.Nava.Ffmpeg.FfmpegLibrary.IsAvailable;
+    private static bool FfmpegAvailable() => Pardeh.Ffmpeg.FfmpegLibrary.IsAvailable;
 
     /// <summary>An AVI of uncompressed BGR frames (pixel colour = frame number) and 16-bit stereo PCM.</summary>
     private void WriteAvi()
@@ -129,14 +131,15 @@ public sealed class VideoSpeedTests(ITestOutputHelper output) : IDisposable
         return frame.Pixels[i] + frame.Pixels[i + 1] / 40 * 256;
     }
 
-    private static string Debug(NavaEngine engine)
+    private static string Debug(MediaEngine engine)
     {
-        var t = typeof(NavaEngine);
+        var t = typeof(Pardeh.Nava.NavaPlayer);
         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
-        var reader = (Pardeh.Nava.IAudioSource?)t.GetField("_reader", flags)!.GetValue(engine);
-        var stretcher = t.GetField("_stretcher", flags)!.GetValue(engine);
+        var sound = typeof(MediaEngine).GetField("_sound", flags)!.GetValue(engine);
+        var reader = (Pardeh.Nava.IAudioSource?)t.GetField("_reader", flags)!.GetValue(sound);
+        var stretcher = t.GetField("_stretcher", flags)!.GetValue(sound);
         var pending = stretcher?.GetType().GetProperty("PendingSourceSeconds")?.GetValue(stretcher);
-        var output = t.GetField("_output", flags)!.GetValue(engine);
+        var output = t.GetField("_output", flags)!.GetValue(sound);
         var state = output?.GetType().GetProperty("PlaybackState")?.GetValue(output);
         string F(string n) => stretcher is null ? "-" : stretcher.GetType().GetField(n, flags)!.GetValue(stretcher)?.ToString() ?? "";
         return $"reader={reader?.CurrentTime.TotalSeconds:0.00} pending={pending} output={state} in={F("_inputFrames")} out={F("_outputFrames")} ended={F("_ended")} debt={F("_skipDebt")}";
@@ -151,7 +154,7 @@ public sealed class VideoSpeedTests(ITestOutputHelper output) : IDisposable
         if (!Enabled)
             return;
         WriteAvi();
-        using var engine = new NavaEngine { Muted = true };
+        using var engine = new MediaEngine { Muted = true };
         engine.Open(_file);
         engine.PlaybackFailed += (_, ex) => output.WriteLine("PLAYBACK FAILED: " + ex);
         engine.PlaybackEnded += (_, _) => output.WriteLine("PLAYBACK ENDED at " + engine.Position);

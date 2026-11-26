@@ -128,7 +128,8 @@ sliders. The Pardeh logo can follow the colour too.
 
 ### Playback
 
-- Audio and video with **Nava**, Pardeh's engine: FFmpeg decoding, with Windows Media Foundation as a fallback on Windows.
+- Audio by **Nava** and video by **Nama**, Pardeh's own parts: FFmpeg decoding, with Windows Media Foundation as a fallback on
+  Windows.
 - 10-band equalizer with presets, balance, and visualizations.
 - Gapless playback for audio files with the same sample rate, and crossfade.
 - Volume levelling from ReplayGain tags; untagged files are measured in the background.
@@ -222,7 +223,10 @@ Tests that need reference skins, FFmpeg or the internet are skipped when those a
 | Project | Purpose |
 | --- | --- |
 | `Pardeh.Core` | Player model: playlist, transport, library, lyrics, keymaps, network addresses |
-| `Pardeh.Nava` | Media engine: decoding, equalizer, spectrum, audio output, video timed to the audio clock |
+| `Pardeh.Nava` | Audio: decoding, play speed, equalizer, effects, gapless and crossfade, spectrum, output (WASAPI, AudioTrack) |
+| `Pardeh.Nama` | Video: decoding, each picture at its time, the video clock, subtitles inside video files |
+| `Pardeh.Engine` | The playback engine: puts Nava and Nama together and keeps them in step; network and web page addresses |
+| `Pardeh.Ffmpeg` | What both need of FFmpeg: loading the libraries, file, content and network input, the https relay |
 | `Pardeh.Skinning` | Skin loaders, element runtime, script host, WMP object model (no UI dependency) |
 | `Pardeh.UI` | The shared interface and built-in looks |
 | `Pardeh.App` | Windows desktop app |

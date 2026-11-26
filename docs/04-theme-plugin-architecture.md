@@ -14,7 +14,7 @@ flowchart LR
   SM --> R["Skin renderer<br/>(Avalonia + Skia)"]
   SM --> JS["Script host<br/>(sandboxed Jint)"]
   JS --> OM["Compatibility object models<br/>WMP: player, view, theme, eq…"]
-  OM --> Core["Pardeh.Core + Nava"]
+  OM --> Core["Pardeh.Core + Engine (Nava, Nama)"]
   R --> Core
 ```
 

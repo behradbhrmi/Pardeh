@@ -1,9 +1,10 @@
+using Pardeh.Engine;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Pardeh.Core.Playback;
 using Pardeh.Nava;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
 
 namespace Pardeh.Skinning.Tests;
 
@@ -167,7 +168,7 @@ public sealed class PageOpenTests
     {
         Assert.SkipWhen(!FfmpegLibrary.IsAvailable, "needs FFmpeg");
         using var site = new Site();
-        using var engine = new NavaEngine { Muted = true };
+        using var engine = new MediaEngine { Muted = true };
         using var prepared = engine.PrepareOpen(site.Home + "/watch", new NetworkOptions(), Cancel);
         try
         {
@@ -189,7 +190,7 @@ public sealed class PageOpenTests
     {
         Assert.SkipWhen(!FfmpegLibrary.IsAvailable, "needs FFmpeg");
         using var site = new Site();
-        using var engine = new NavaEngine { Muted = true };
+        using var engine = new MediaEngine { Muted = true };
         var error = Assert.ThrowsAny<Exception>(() => engine.PrepareOpen(site.Home + path, new NetworkOptions(), Cancel));
         Assert.Contains(reason, MediaPlayer.FriendlyReason(error.Message));
     }

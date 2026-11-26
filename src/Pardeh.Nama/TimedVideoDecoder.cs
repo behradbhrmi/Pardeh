@@ -1,6 +1,6 @@
 using Pardeh.Core.Playback;
 
-namespace Pardeh.Nava;
+namespace Pardeh.Nama;
 
 /// <summary>
 /// Shared presentation loop for video decoders: decodes on its own thread and publishes each frame when the

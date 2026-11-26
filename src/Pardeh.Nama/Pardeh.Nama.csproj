@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Nama (view, appearance): Pardeh's video: decoding pictures, showing each at its time, and the subtitles inside a
+       video file. It knows nothing about the audio chain: it is only told what time it is. -->
+  <PropertyGroup>
+    <RootNamespace>Pardeh.Nama</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- net11.0: FFmpeg, with Media Foundation as the fallback (Windows). net11.0-android: FFmpeg. -->
+    <TargetFramework />
+    <TargetFrameworks>net11.0;net11.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.EndsWith('-android'))">24.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+    <ProjectReference Include="..\Pardeh.Ffmpeg\Pardeh.Ffmpeg.csproj" />
+  </ItemGroup>
+
+  <!-- NAudio for its Media Foundation declarations only. -->
+  <ItemGroup Condition="!$(TargetFramework.EndsWith('-android'))">
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TargetFramework.EndsWith('-android'))">
+    <Compile Remove="Windows\**" />
+  </ItemGroup>
+  <ItemGroup Condition="!$(TargetFramework.EndsWith('-android'))">
+    <Compile Remove="Android\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pardeh.Engine" />
+    <InternalsVisibleTo Include="Pardeh.Skinning.Tests" />
+  </ItemGroup>
+
+</Project>

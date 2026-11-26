@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The app's playback engine: it puts Nava (sound) and Nama (picture) together and keeps them in step. -->
+  <PropertyGroup>
+    <RootNamespace>Pardeh.Engine</RootNamespace>
+    <TargetFramework />
+    <TargetFrameworks>net11.0;net11.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.EndsWith('-android'))">24.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+    <ProjectReference Include="..\Pardeh.Ffmpeg\Pardeh.Ffmpeg.csproj" />
+    <ProjectReference Include="..\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\Pardeh.Nama\Pardeh.Nama.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pardeh.Skinning.Tests" />
+  </ItemGroup>
+
+</Project>

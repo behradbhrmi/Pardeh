@@ -1,6 +1,6 @@
 using FFmpeg.AutoGen;
 
-namespace Pardeh.Nava.Ffmpeg;
+namespace Pardeh.Ffmpeg;
 
 /// <summary>
 /// Finds and loads the FFmpeg shared libraries. Without them Pardeh falls back to Media Foundation (Windows);

@@ -14,8 +14,6 @@ internal static partial class PlatformAudio
         throw new PlatformNotSupportedException(
             "No decoder: the FFmpeg libraries (libav*.so) are not packaged in this build. " +
             "Place them in src/Pardeh.Android/lib/<abi>/ (see docs/android-build.md).");
-
-    public static TimedVideoDecoder? TryOpenFallbackVideo(string source, Func<TimeSpan> clock) => null;
 }
 
 /// <summary>

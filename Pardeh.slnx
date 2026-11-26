@@ -3,6 +3,9 @@
     <Project Path="src/Pardeh.Android/Pardeh.Android.csproj" />
     <Project Path="src/Pardeh.App/Pardeh.App.csproj" />
     <Project Path="src/Pardeh.Core/Pardeh.Core.csproj" />
+    <Project Path="src/Pardeh.Engine/Pardeh.Engine.csproj" />
+    <Project Path="src/Pardeh.Ffmpeg/Pardeh.Ffmpeg.csproj" />
+    <Project Path="src/Pardeh.Nama/Pardeh.Nama.csproj" />
     <Project Path="src/Pardeh.Nava/Pardeh.Nava.csproj" />
     <Project Path="src/Pardeh.Skinning/Pardeh.Skinning.csproj" />
     <Project Path="src/Pardeh.UI/Pardeh.UI.csproj" />

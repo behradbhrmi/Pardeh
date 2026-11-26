@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
-    <ProjectReference Include="..\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\Pardeh.Engine\Pardeh.Engine.csproj" />
     <ProjectReference Include="..\Pardeh.Skinning\Pardeh.Skinning.csproj" />
     <ProjectReference Include="..\Pardeh.UI\Pardeh.UI.csproj" />
   </ItemGroup>

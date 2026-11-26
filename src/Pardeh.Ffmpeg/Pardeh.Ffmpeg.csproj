@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- What sound (Pardeh.Nava) and picture (Pardeh.Nama) both need of FFmpeg: finding and loading the libraries, opening
+       files, content streams and network addresses, and the https relay. -->
+  <PropertyGroup>
+    <RootNamespace>Pardeh.Ffmpeg</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TargetFramework />
+    <TargetFrameworks>net11.0;net11.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.EndsWith('-android'))">24.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FFmpeg.AutoGen" Version="8.1.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="!$(TargetFramework.EndsWith('-android'))">
+    <Compile Remove="Android\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Pardeh.Nava" />
+    <InternalsVisibleTo Include="Pardeh.Nama" />
+    <InternalsVisibleTo Include="Pardeh.Engine" />
+    <InternalsVisibleTo Include="Pardeh.Skinning.Tests" />
+  </ItemGroup>
+
+</Project>

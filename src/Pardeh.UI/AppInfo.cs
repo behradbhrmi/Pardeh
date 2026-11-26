@@ -1,3 +1,4 @@
+using Pardeh.Ffmpeg;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Pardeh.Core.Updates;
@@ -57,7 +58,7 @@ public static class AppInfo
     public static bool IsStandalone => OperatingSystem.IsWindows() && File.Exists(Path.Combine(AppContext.BaseDirectory, "coreclr.dll"));
 
     private static string Decoders =>
-        Pardeh.Nava.Ffmpeg.FfmpegLibrary.IsAvailable ? "FFmpeg " + Pardeh.Nava.Ffmpeg.FfmpegLibrary.Version
+        Pardeh.Ffmpeg.FfmpegLibrary.IsAvailable ? "FFmpeg " + Pardeh.Ffmpeg.FfmpegLibrary.Version
         : OperatingSystem.IsWindows() ? "Windows Media Foundation" : "Not available";
 
     /// <summary>Label and value of each fact about this copy.</summary>

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using NAudio.MediaFoundation;
 
-namespace Pardeh.Nava;
+namespace Pardeh.Nama;
 
 /// <summary>Video decoding with Windows Media Foundation (the fallback when FFmpeg isn't installed).</summary>
 /// <remarks>Media Foundation objects live only on the decoder thread.</remarks>

@@ -1,7 +1,8 @@
+using Pardeh.Engine;
 using NAudio.Wave;
 using Pardeh.Core.Playback;
 using Pardeh.Nava;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
 
 namespace Pardeh.Skinning.Tests;
 
@@ -153,7 +154,7 @@ public sealed class GaplessTests
 
             var a = Write("a.wav", 1.5);
             var b = Write("b.wav", 1.0);
-            using var engine = new NavaEngine { Volume = 0, Muted = true };
+            using var engine = new MediaEngine { Volume = 0, Muted = true };
             var advanced = new TaskCompletionSource<string>();
             var ended = new TaskCompletionSource<bool>();
             engine.AdvancedToNext += (_, source) => advanced.TrySetResult(source);
@@ -166,6 +167,58 @@ public sealed class GaplessTests
             Assert.InRange(engine.Duration.TotalSeconds, 0.95, 1.05); // the new track's length
             Assert.InRange(engine.Position.TotalSeconds, 0, 0.8);
             Assert.True(await ended.Task.WaitAsync(TimeSpan.FromSeconds(8), TestContext.Current.CancellationToken), "ended only after running on");
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>A crossfade on the real engine: the next track takes over at once and plays to its own end. Opt in with PARDEH_AUDIO_TESTS=1.</summary>
+    [Fact]
+    public async Task The_real_engine_crossfades_into_another_track()
+    {
+        Assert.SkipWhen(Environment.GetEnvironmentVariable("PARDEH_AUDIO_TESTS") != "1" || !FfmpegLibrary.IsAvailable, "set PARDEH_AUDIO_TESTS=1 (needs an audio device and FFmpeg)");
+        var folder = Directory.CreateTempSubdirectory("pardeh-crossfade-live-").FullName;
+        try
+        {
+            string Write(string name, double seconds)
+            {
+                var path = Path.Combine(folder, name);
+                using var writer = new WaveFileWriter(path, new WaveFormat(44100, 16, 2));
+                for (var i = 0; i < (int)(seconds * 44100) * 2; i++)
+                    writer.WriteSample(0);
+                return path;
+            }
+
+            var a = Write("a.wav", 4.0);
+            var b = Write("b.wav", 1.5);
+            using var engine = new MediaEngine { Volume = 0, Muted = true };
+            var ends = 0;
+            var ended = new TaskCompletionSource();
+            engine.PlaybackEnded += (_, _) =>
+            {
+                Interlocked.Increment(ref ends);
+                ended.TrySetResult();
+            };
+            engine.Open(a);
+            engine.Play();
+            await Task.Delay(600, TestContext.Current.CancellationToken);
+
+            engine.OpenCrossfade(b, 0.5);
+            engine.Play();
+            Assert.InRange(engine.Duration.TotalSeconds, 1.45, 1.55); // the new track's
+            Assert.InRange(engine.Position.TotalSeconds, 0, 0.6);
+
+            await ended.Task.WaitAsync(TimeSpan.FromSeconds(8), TestContext.Current.CancellationToken);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            Assert.Equal(1, ends); // only the new track's end counts, not the faded one's
         }
         finally
         {

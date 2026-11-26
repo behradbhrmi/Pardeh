@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using FFmpeg.AutoGen;
 
-namespace Pardeh.Nava.Ffmpeg;
+namespace Pardeh.Ffmpeg;
 
 /// <summary>
 /// Resolves FFmpeg functions from the APK's native library folder, where Android only accepts

@@ -1,8 +1,9 @@
+using Pardeh.Ffmpeg;
 using System.Runtime.InteropServices;
 using FFmpeg.AutoGen;
 using Pardeh.Core.Playback;
 
-namespace Pardeh.Nava.Ffmpeg;
+namespace Pardeh.Nama;
 
 /// <summary>Subtitles inside a media file (Matroska, MP4 ...): lists the text tracks and reads one into cues.</summary>
 internal static unsafe class FfmpegSubtitleReader
@@ -36,7 +37,7 @@ internal static unsafe class FfmpegSubtitleReader
                 var stream = format->streams[i];
                 if (stream->codecpar->codec_type != AVMediaType.AVMEDIA_TYPE_SUBTITLE || !TextCodecs.Contains(stream->codecpar->codec_id))
                     continue;
-                var language = Tag(stream, "language") is { Length: > 0 } code && code != "und" ? FfmpegAudioSource.LanguageName(code) : null;
+                var language = Tag(stream, "language") is { Length: > 0 } code && code != "und" ? FfmpegMetadata.LanguageName(code) : null;
                 var title = Tag(stream, "title");
                 var name = string.Join(" – ", new[] { language, title }.Where(s => !string.IsNullOrWhiteSpace(s)));
                 tracks.Add(new SubtitleTrack(path, i, name.Length > 0 ? name : $"Subtitle {tracks.Count + 1}"));

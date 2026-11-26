@@ -1,7 +1,8 @@
+using Pardeh.Engine;
 using System.Diagnostics;
 using Pardeh.Core.Playback;
 using Pardeh.Nava;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
 
 namespace Pardeh.Skinning.Tests;
 
@@ -34,7 +35,7 @@ public sealed class OnlineVideoTests(ITestOutputHelper output)
     private void Try(string kind, string url, bool seek)
     {
         Assert.SkipWhen(!FfmpegLibrary.IsAvailable, "needs FFmpeg");
-        using var engine = new NavaEngine { Muted = true };
+        using var engine = new MediaEngine { Muted = true };
         var options = new NetworkOptions { UserAgent = "MediaClientTest/1.0" };
         var clock = Stopwatch.StartNew();
         using var prepared = engine.PrepareOpen(url, options, TestContext.Current.CancellationToken);

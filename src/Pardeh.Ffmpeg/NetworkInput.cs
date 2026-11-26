@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using FFmpeg.AutoGen;
 using Pardeh.Core.Playback;
 
-namespace Pardeh.Nava.Ffmpeg;
+namespace Pardeh.Ffmpeg;
 
 /// <summary>How one network input is opened: the user's options and the switch that makes FFmpeg give up.</summary>
 internal sealed record NetworkInput(NetworkOptions Options, NetworkAbort Abort);

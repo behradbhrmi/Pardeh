@@ -1,7 +1,8 @@
+using Pardeh.Ffmpeg;
 using FFmpeg.AutoGen;
 using NAudio.Wave;
 
-namespace Pardeh.Nava.Ffmpeg;
+namespace Pardeh.Nava;
 
 /// <summary>Decodes the best audio stream of a file with FFmpeg into interleaved float stereo.</summary>
 /// <remarks>Not thread-safe: the engine serialises Read and seeking.</remarks>
@@ -80,7 +81,7 @@ internal sealed unsafe class FfmpegAudioSource : IAudioSource
                     return entry is null ? null : System.Runtime.InteropServices.Marshal.PtrToStringUTF8((IntPtr)entry->value);
                 }
 
-                var language = Tag("language") is { Length: > 0 } code && code != "und" ? LanguageName(code) : null;
+                var language = Tag("language") is { Length: > 0 } code && code != "und" ? FfmpegMetadata.LanguageName(code) : null;
                 var title = Tag("title");
                 var codec = ffmpeg.avcodec_get_name(stream->codecpar->codec_id)?.ToUpperInvariant();
                 var details = $"{codec}, {stream->codecpar->ch_layout.nb_channels} ch";
@@ -94,30 +95,6 @@ internal sealed unsafe class FfmpegAudioSource : IAudioSource
         }
 
         return tracks;
-    }
-
-    /// <summary>"fas" / "fa" → "Persian" (ISO 639 codes as in Matroska / MP4 tags).</summary>
-    internal static string LanguageName(string code)
-    {
-        // ISO 639-2/B codes some files use, mapped to the /T codes .NET knows.
-        code = code.ToLowerInvariant() switch
-        {
-            "per" => "fas", "ger" => "deu", "fre" => "fra", "chi" => "zho", "dut" => "nld", "cze" => "ces",
-            "gre" => "ell", "arm" => "hye", "geo" => "kat", "ice" => "isl", "mac" => "mkd", "may" => "msa",
-            "bur" => "mya", "rum" => "ron", "slo" => "slk", "tib" => "bod", "wel" => "cym", "alb" => "sqi", "baq" => "eus",
-            var other => other,
-        };
-        try
-        {
-            var culture = System.Globalization.CultureInfo.GetCultures(System.Globalization.CultureTypes.NeutralCultures)
-                .FirstOrDefault(c => c.ThreeLetterISOLanguageName.Equals(code, StringComparison.OrdinalIgnoreCase)
-                    || c.TwoLetterISOLanguageName.Equals(code, StringComparison.OrdinalIgnoreCase));
-            return culture is null || culture.Equals(System.Globalization.CultureInfo.InvariantCulture) ? code : culture.EnglishName;
-        }
-        catch (System.Globalization.CultureNotFoundException)
-        {
-            return code;
-        }
     }
 
     private readonly NetworkAbort? _abort;

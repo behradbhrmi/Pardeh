@@ -1,3 +1,4 @@
+using Pardeh.Engine;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
@@ -27,7 +28,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     private readonly SkinCanvas _canvas = new();
     private readonly LayoutTransformControl _scaler;
     private readonly MediaPlayer _player;
-    private readonly NavaEngine _engine;
+    private readonly MediaEngine _engine;
     private readonly IImageDecoder _decoder = new CompositeImageDecoder(new BmpDecoder(), new AvaloniaImageDecoder());
     private readonly IPreferenceStore _preferences = new JsonPreferenceStore(Path.Combine(AppPaths.DataDirectory, "SkinPreferences"));
     private readonly DispatcherTimer _timer;
@@ -80,7 +81,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DropEvent, OnDrop);
 
-        _engine = new NavaEngine();
+        _engine = new MediaEngine();
         _engine.PlaybackFailed += (_, ex) => Dispatcher.UIThread.Post(() => Log($"Audio output failed: {ex}"));
         _player = new MediaPlayer(_engine, new TagMediaInfoReader());
         _player.Favorites = new Pardeh.Core.Library.FavoritesStore(Path.Combine(AppPaths.DataDirectory, "favorites.json"));

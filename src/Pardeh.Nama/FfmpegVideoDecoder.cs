@@ -1,6 +1,7 @@
+using Pardeh.Ffmpeg;
 using FFmpeg.AutoGen;
 
-namespace Pardeh.Nava.Ffmpeg;
+namespace Pardeh.Nama;
 
 /// <summary>Decodes the main video stream of a file with FFmpeg into BGRA frames (via swscale).</summary>
 /// <remarks>All FFmpeg objects live on the decoder thread.</remarks>

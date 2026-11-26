@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Pardeh.Skinning\Pardeh.Skinning.csproj" />
-    <ProjectReference Include="..\..\src\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\..\src\Pardeh.Engine\Pardeh.Engine.csproj" />
     <ProjectReference Include="..\..\src\Pardeh.UI\Pardeh.UI.csproj" SetTargetFramework="TargetFramework=net11.0" />
     <PackageReference Include="Avalonia.Headless" Version="12.1.5" />
     <PackageReference Include="Avalonia.Skia" Version="12.1.5" />

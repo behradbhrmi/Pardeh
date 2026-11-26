@@ -12,7 +12,6 @@ internal static partial class PlatformAudio
 
     public static IAudioSource? OpenFallbackAudio(string source) => new MediaFoundationAudioSource(source);
 
-    public static TimedVideoDecoder? TryOpenFallbackVideo(string source, Func<TimeSpan> clock) => MfVideoDecoder.TryOpen(source, clock);
 }
 
 /// <summary>Shared-mode, event-driven WASAPI.</summary>

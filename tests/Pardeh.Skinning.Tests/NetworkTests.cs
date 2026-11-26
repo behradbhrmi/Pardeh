@@ -1,9 +1,10 @@
+using Pardeh.Engine;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Pardeh.Core.Playback;
 using Pardeh.Nava;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
 
 namespace Pardeh.Skinning.Tests;
 
@@ -418,7 +419,7 @@ public sealed class NetworkEngineTests
     {
         NeedFfmpeg();
         using var server = new Server(Wav());
-        using var engine = new NavaEngine();
+        using var engine = new MediaEngine();
         var missing = server.Url.Replace("tone", "missing");
         var error = Assert.ThrowsAny<Exception>(() => engine.PrepareOpen(missing, new NetworkOptions(Reconnect: false), TestContext.Current.CancellationToken));
         Assert.Contains("404", error.Message);
@@ -436,7 +437,7 @@ public sealed class NetworkEngineTests
         try
         {
             using var server = new Server(await File.ReadAllBytesAsync(path, TestContext.Current.CancellationToken));
-            using var engine = new NavaEngine();
+            using var engine = new MediaEngine();
             var prepared = engine.PrepareOpen(server.Url, new NetworkOptions(), TestContext.Current.CancellationToken);
             engine.OpenPrepared(prepared);
             Assert.Equal((32, 24), engine.VideoSize);
@@ -475,7 +476,7 @@ public sealed class NetworkEngineTests
     {
         NeedFfmpeg();
         using var server = new Server([], silent: true);
-        using var engine = new NavaEngine();
+        using var engine = new MediaEngine();
         using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(700));
         var started = Environment.TickCount64;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Task.Run(() => engine.PrepareOpen(server.Url, new NetworkOptions(), cancel.Token)));
@@ -487,7 +488,7 @@ public sealed class NetworkEngineTests
     {
         NeedFfmpeg();
         using var server = new Server([], silent: true);
-        using var engine = new NavaEngine();
+        using var engine = new MediaEngine();
         var started = Environment.TickCount64;
         Assert.ThrowsAny<Exception>(() => engine.PrepareOpen(server.Url, new NetworkOptions(Reconnect: false) { ConnectTimeout = TimeSpan.FromSeconds(2) }, TestContext.Current.CancellationToken));
         Assert.InRange(Environment.TickCount64 - started, 1500, 8000);

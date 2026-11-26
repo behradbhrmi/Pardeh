@@ -1,27 +1,25 @@
 using Pardeh.Core.Playback;
-using Pardeh.Nava.Ffmpeg;
+using Pardeh.Ffmpeg;
+using Pardeh.Nama;
+using Pardeh.Nava;
 
-namespace Pardeh.Nava;
+namespace Pardeh.Engine;
 
 /// <summary>
 /// Network media: connecting happens in <see cref="PrepareOpen"/> off the interface thread; the sound is read ahead
 /// (<see cref="ReadAheadSource"/>). A video decoder, with its own connection, is opened only when the address really has
 /// a picture, so a radio station keeps a single connection.
 /// </summary>
-public sealed partial class NavaEngine
+public sealed partial class MediaEngine
 {
-    private ReadAheadSource? _readAhead;
-
     public bool OpensInBackground(string source) => NetworkMedia.IsNetwork(source);
 
-    public bool IsBuffering => _readAhead?.IsBuffering ?? false;
+    public bool IsBuffering => _sound.IsBuffering;
 
-    public int BufferingPercent => _readAhead?.BufferingPercent ?? 100;
+    public int BufferingPercent => _sound.BufferingPercent;
 
-    private sealed class Prepared(string source) : IDisposable
+    private sealed class Prepared : IDisposable
     {
-        public string Source { get; } = source;
-
         public IAudioSource? Audio { get; set; }
 
         public TimedVideoDecoder? Video { get; set; }
@@ -75,7 +73,7 @@ public sealed partial class NavaEngine
     private IDisposable PrepareMedia(string source, string address, NetworkOptions options, CancellationToken cancel)
     {
         cancel.ThrowIfCancellationRequested();
-        var prepared = new Prepared(source);
+        var prepared = new Prepared();
         try
         {
             Exception? error = null;
@@ -115,7 +113,7 @@ public sealed partial class NavaEngine
             }
             else
             {
-                prepared.Audio = OpenAudio(address, out error);
+                prepared.Audio = NavaPlayer.OpenSource(address, out error);
             }
 
             cancel.ThrowIfCancellationRequested();
@@ -123,9 +121,7 @@ public sealed partial class NavaEngine
             {
                 var abort = new NetworkAbort();
                 using var onCancel = cancel.Register(abort.Cancel);
-                prepared.Video = FfmpegVideoDecoder.TryOpen(pictureAddress, VideoClock, new NetworkInput(options, abort));
-                if (prepared.Video is { } video)
-                    video.PlaybackRate = (float)_rate;
+                prepared.Video = _picture.OpenNetwork(pictureAddress, new NetworkInput(options, abort));
             }
 
             cancel.ThrowIfCancellationRequested();
@@ -234,23 +230,15 @@ public sealed partial class NavaEngine
     {
         var prepared = (Prepared)media;
         Close();
-        _video = prepared.Video;
-        _source = prepared.Source;
-        _tracks.Clear();
-        _currentTrack = -1;
-        _chapters = [];
-        _subtitleTracks = [];
+        _picture.Show(prepared.Video);
         if (prepared.Audio is not { } audio)
         {
             prepared.Used = true;
-            _silentClock = new SilentClock(_video!.Duration);
-            _silentClock.SetRate(_rate);
-            _endWatcher = new Timer(_ => CheckSilentEnd(), null, 200, 200);
+            _picture.StartWithoutSound();
             return;
         }
 
-        BuildAudio(audio); // when this throws, the caller disposes the prepared media
-        _readAhead = audio as ReadAheadSource;
+        _sound.Start(audio); // when this throws, the caller disposes the prepared media
         prepared.Used = true;
     }
 }

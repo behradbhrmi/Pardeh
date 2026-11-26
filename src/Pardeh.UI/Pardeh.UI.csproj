@@ -5,7 +5,7 @@
   <PropertyGroup>
     <RootNamespace>Pardeh.UI</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- net11.0 for the Windows head; net11.0-android so the Android head gets the Android build of Pardeh.Nava (AudioTrack),
+    <!-- net11.0 for the Windows head; net11.0-android so the Android head gets the Android builds of the engine (AudioTrack),
          not the net11.0 one (WASAPI / Media Foundation). -->
     <TargetFramework />
     <TargetFrameworks>net11.0;net11.0-android</TargetFrameworks>
@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Pardeh.Core\Pardeh.Core.csproj" />
-    <ProjectReference Include="..\Pardeh.Nava\Pardeh.Nava.csproj" />
+    <ProjectReference Include="..\Pardeh.Engine\Pardeh.Engine.csproj" />
     <ProjectReference Include="..\Pardeh.Skinning\Pardeh.Skinning.csproj" />
   </ItemGroup>
 
