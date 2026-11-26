@@ -526,7 +526,7 @@ public sealed class LyricsViewTests
         using var bitmap = new RenderTargetBitmap(new PixelSize((int)view.Root.Width, (int)view.Root.Height), new Vector(96, 96));
         bitmap.Render(canvas);
         using var stream = new MemoryStream();
-        bitmap.Save(stream);
+        bitmap.Save(stream, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         return new AvaloniaImageDecoder().Decode(stream.ToArray())!;
     }
 
@@ -773,7 +773,7 @@ public sealed class LyricsViewTests
                 canvas.Arrange(new Rect(0, 0, w, h));
                 using var bitmap = new RenderTargetBitmap(new PixelSize((int)w, (int)h), new Vector(96, 96));
                 bitmap.Render(canvas);
-                bitmap.Save(Path.Combine(folder, $"{key}_{(w > h ? "land" : "port")}.png"));
+                bitmap.Save(Path.Combine(folder, $"{key}_{(w > h ? "land" : "port")}.png"), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
             }
     }
 

@@ -160,7 +160,7 @@ public sealed partial class MediaEngine
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.UserAgent.TryParseAdd(options.UserAgent);
             request.Headers.Accept.ParseAdd("text/html,application/xhtml+xml");
-            using var response = http.Send(request, HttpCompletionOption.ResponseHeadersRead, limit.Token);
+            using var response = Send(http, request, limit.Token);
             if (!response.IsSuccessStatusCode
                 || response.Content.Headers.ContentType?.MediaType?.ToLowerInvariant() is not ("text/html" or "application/xhtml+xml"))
             {
@@ -168,7 +168,7 @@ public sealed partial class MediaEngine
             }
 
             // A long page is read as far as the limit: what describes it stands near the top.
-            using var stream = response.Content.ReadAsStream(limit.Token);
+            using var stream = response.Content.ReadAsStreamAsync(limit.Token).GetAwaiter().GetResult();
             var bytes = new byte[MaxPageBytes];
             var total = 0;
             int read;
@@ -183,6 +183,13 @@ public sealed partial class MediaEngine
             return null;
         }
     }
+
+    /// <summary>
+    /// Waits for the headers of an answer (this runs on a worker). Not HttpClient.Send: Android's handler does not have it,
+    /// and the failure looked like an address that could not be read.
+    /// </summary>
+    private static HttpResponseMessage Send(HttpClient http, HttpRequestMessage request, CancellationToken cancel) =>
+        http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel).GetAwaiter().GetResult();
 
     private const int MaxMasterBytes = 1024 * 1024;
 
@@ -205,10 +212,10 @@ public sealed partial class MediaEngine
             using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.UserAgent.TryParseAdd(options.UserAgent);
-            using var response = http.Send(request, HttpCompletionOption.ResponseHeadersRead, limit.Token);
+            using var response = Send(http, request, limit.Token);
             if (!response.IsSuccessStatusCode)
                 return null;
-            using var stream = response.Content.ReadAsStream(limit.Token);
+            using var stream = response.Content.ReadAsStreamAsync(limit.Token).GetAwaiter().GetResult();
             var bytes = new byte[MaxMasterBytes];
             var total = 0;
             int read;

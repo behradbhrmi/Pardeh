@@ -44,7 +44,7 @@ internal static class CoverBlur
     private static Bitmap Compute(Bitmap cover, int width, int height, int radius)
     {
         // A hardware bitmap (what some decoders return) cannot be read pixel by pixel: work on a normal copy of it.
-        if (cover.GetConfig() == Bitmap.Config.Hardware && cover.Copy(Bitmap.Config.Argb8888!, false) is { } soft)
+        if (OperatingSystem.IsAndroidVersionAtLeast(26) && cover.GetConfig() == Bitmap.Config.Hardware && cover.Copy(Bitmap.Config.Argb8888!, false) is { } soft)
         {
             using (soft)
                 return Compute(soft, width, height, radius);

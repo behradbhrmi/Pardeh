@@ -230,7 +230,7 @@ public sealed class LyricsTagTests : IDisposable
         File.WriteAllText(Path.ChangeExtension(path, ".lrc"), Lrc);
         var service = new LyricsService(null, [new TagLyricsSource(), new SidecarLyricsSource()]);
 
-        var lyrics = (await service.GetAsync(new TagMediaInfoReader().Read(path)))!;
+        var lyrics = (await service.GetAsync(new TagMediaInfoReader().Read(path), TestContext.Current.CancellationToken))!;
 
         Assert.True(lyrics.Synced);
         Assert.Equal(LyricsSources.Sidecar, lyrics.Source);
@@ -244,7 +244,7 @@ public sealed class LyricsTagTests : IDisposable
         Assert.Equal("Artist", item.GetAttribute("Author"));
         Assert.Equal(1, item.Duration.TotalSeconds, 0.2);
 
-        var lyrics = await new LyricsService(null, [new TagLyricsSource()]).GetAsync(item);
+        var lyrics = await new LyricsService(null, [new TagLyricsSource()]).GetAsync(item, TestContext.Current.CancellationToken);
         AssertSynced(lyrics);
     }
 }

@@ -251,7 +251,7 @@ public sealed class LyricsFileTests : IDisposable
         var item = Song();
         Write("song.lrc", PersianLrc, Encoding.GetEncoding(1256));
         var service = new LyricsService(null, [new TagLyricsSource(), new SidecarLyricsSource()]);
-        var lyrics = (await service.GetAsync(item))!;
+        var lyrics = (await service.GetAsync(item, TestContext.Current.CancellationToken))!;
         Assert.Equal(LyricsSources.Sidecar, lyrics.Source);
         Assert.Equal(Through1256("کتاب و یاد"), lyrics.Lines[2].Text);
         Assert.Equal(1, lyrics.IndexAt(TimeSpan.FromSeconds(6)));

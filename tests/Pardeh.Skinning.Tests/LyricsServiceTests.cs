@@ -36,7 +36,7 @@ public sealed class LyricsServiceTests : IDisposable
         var item = Track();
         service.SaveOverride(item, Plain("mine"));
 
-        var lyrics = await service.GetAsync(item);
+        var lyrics = await service.GetAsync(item, TestContext.Current.CancellationToken);
 
         Assert.Equal("mine", lyrics!.Lines[0].Text);
         Assert.Equal(LyricsSources.Override, lyrics.Source);
@@ -50,12 +50,12 @@ public sealed class LyricsServiceTests : IDisposable
         Service([]).SaveOverride(item, Synced("a", "b"));
 
         var fresh = Service([Source("embedded", Synced("tag"))]);
-        var lyrics = await fresh.GetAsync(item);
+        var lyrics = await fresh.GetAsync(item, TestContext.Current.CancellationToken);
         Assert.Equal(["a", "b"], lyrics!.Lines.Select(l => l.Text));
         Assert.True(lyrics.Synced);
 
         Assert.True(fresh.DeleteOverride(item));
-        Assert.Equal("tag", (await fresh.GetAsync(item))!.Lines[0].Text);
+        Assert.Equal("tag", (await fresh.GetAsync(item, TestContext.Current.CancellationToken))!.Lines[0].Text);
         Assert.False(fresh.DeleteOverride(item));
         Assert.Empty(Directory.GetFiles(Path.Combine(_data, "lyrics"), "*.lrc"));
     }
@@ -64,14 +64,14 @@ public sealed class LyricsServiceTests : IDisposable
     public async Task Embedded_lyrics_come_before_a_sidecar()
     {
         var service = Service([Source("embedded", Synced("tag")), Source("sidecar", Synced("file"))]);
-        Assert.Equal("tag", (await service.GetAsync(Track()))!.Lines[0].Text);
+        Assert.Equal("tag", (await service.GetAsync(Track(), TestContext.Current.CancellationToken))!.Lines[0].Text);
     }
 
     [Fact]
     public async Task Synchronised_lyrics_beat_plain_ones_from_an_earlier_source()
     {
         var service = Service([Source("embedded", Plain("tag text")), Source("sidecar", Synced("file synced"))]);
-        var lyrics = await service.GetAsync(Track());
+        var lyrics = await service.GetAsync(Track(), TestContext.Current.CancellationToken);
         Assert.True(lyrics!.Synced);
         Assert.Equal("file synced", lyrics.Lines[0].Text);
     }
@@ -80,7 +80,7 @@ public sealed class LyricsServiceTests : IDisposable
     public async Task Between_plain_lyrics_the_first_source_wins()
     {
         var service = Service([Source("embedded", Plain("tag text")), Source("sidecar", Plain("file text"))]);
-        Assert.Equal("tag text", (await service.GetAsync(Track()))!.Lines[0].Text);
+        Assert.Equal("tag text", (await service.GetAsync(Track(), TestContext.Current.CancellationToken))!.Lines[0].Text);
     }
 
     [Fact]
@@ -88,13 +88,13 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var service = Service([new FakeLyricsSource("bad", _ => throw new InvalidOperationException()), Source("empty", null),
             Source("blank", Plain("", "  ")), Source("good", Plain("ok"))]);
-        Assert.Equal("ok", (await service.GetAsync(Track()))!.Lines[0].Text);
+        Assert.Equal("ok", (await service.GetAsync(Track(), TestContext.Current.CancellationToken))!.Lines[0].Text);
     }
 
     [Fact]
     public async Task Nothing_found_gives_null()
     {
-        Assert.Null(await Service([Source("a", null)]).GetAsync(Track()));
+        Assert.Null(await Service([Source("a", null)]).GetAsync(Track(), TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var source = Source("a", Plain("x"));
         var service = Service([source], options: new LyricsOptions(Enabled: false));
-        Assert.Null(await service.GetAsync(Track()));
+        Assert.Null(await service.GetAsync(Track(), TestContext.Current.CancellationToken));
         Assert.Equal(0, source.Calls);
     }
 
@@ -112,7 +112,7 @@ public sealed class LyricsServiceTests : IDisposable
         var provider = new FakeLyricsProvider(_ => Plain("x"));
         var source = Source("a", null);
         var service = Service([source], [provider], new LyricsOptions(Online: true));
-        Assert.Null(await service.GetAsync(Item("http://radio.example/stream", "Live", "DJ")));
+        Assert.Null(await service.GetAsync(Item("http://radio.example/stream", "Live", "DJ"), TestContext.Current.CancellationToken));
         Assert.Empty(provider.Queries);
         Assert.Equal(0, source.Calls);
     }
@@ -122,7 +122,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var provider = new FakeLyricsProvider(_ => Synced("online"));
         var service = Service([Source("a", null)], [provider], new LyricsOptions(Online: false));
-        Assert.Null(await service.GetAsync(Track()));
+        Assert.Null(await service.GetAsync(Track(), TestContext.Current.CancellationToken));
         Assert.Empty(provider.Queries);
     }
 
@@ -133,7 +133,7 @@ public sealed class LyricsServiceTests : IDisposable
         var online = new LyricsOptions(Online: true);
         var item = Track();
 
-        var lyrics = await Service([Source("a", null)], [provider], online).GetAsync(item);
+        var lyrics = await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken);
 
         Assert.Equal("from the net", lyrics!.Lines[0].Text);
         Assert.Equal(LyricsSources.Online, lyrics.Source);
@@ -142,7 +142,7 @@ public sealed class LyricsServiceTests : IDisposable
         Assert.True(File.Exists(Directory.GetFiles(Path.Combine(_data, "lyrics", "online"), "*.lrc").Single()));
 
         // A new session: from the saved copy, no request.
-        var again = await Service([Source("a", null)], [provider], online).GetAsync(item);
+        var again = await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken);
         Assert.Equal("from the net", again!.Lines[0].Text);
         Assert.Equal(LyricsSources.OnlineCache, again.Source);
         Assert.Single(provider.Queries);
@@ -152,8 +152,8 @@ public sealed class LyricsServiceTests : IDisposable
     public async Task Fetched_copies_are_not_used_while_online_is_off()
     {
         var item = Track();
-        await Service([Source("a", null)], [new FakeLyricsProvider(_ => Synced("net"))], new LyricsOptions(Online: true)).GetAsync(item);
-        Assert.Null(await Service([Source("a", null)], null, new LyricsOptions(Online: false)).GetAsync(item));
+        await Service([Source("a", null)], [new FakeLyricsProvider(_ => Synced("net"))], new LyricsOptions(Online: true)).GetAsync(item, TestContext.Current.CancellationToken);
+        Assert.Null(await Service([Source("a", null)], null, new LyricsOptions(Online: false)).GetAsync(item, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -161,7 +161,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var provider = new FakeLyricsProvider(_ => Synced("net"));
         var service = Service([Source("a", null)], [provider], new LyricsOptions(Online: true, SaveFetched: false));
-        Assert.NotNull(await service.GetAsync(Track()));
+        Assert.NotNull(await service.GetAsync(Track(), TestContext.Current.CancellationToken));
         Assert.False(Directory.Exists(Path.Combine(_data, "lyrics", "online")));
     }
 
@@ -170,7 +170,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var provider = new FakeLyricsProvider(_ => Synced("net"));
         var service = Service([Source("a", Plain("local"))], [provider], new LyricsOptions(Online: true));
-        Assert.Equal("local", (await service.GetAsync(Track()))!.Lines[0].Text);
+        Assert.Equal("local", (await service.GetAsync(Track(), TestContext.Current.CancellationToken))!.Lines[0].Text);
         Assert.Empty(provider.Queries);
     }
 
@@ -179,7 +179,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var provider = new FakeLyricsProvider(_ => Synced("net"));
         var service = Service([Source("a", null)], [provider], new LyricsOptions(Online: true));
-        Assert.Null(await service.GetAsync(Item(Path.Combine(_music, "x.mp3"), "Song", artist: "")));
+        Assert.Null(await service.GetAsync(Item(Path.Combine(_music, "x.mp3"), "Song", artist: ""), TestContext.Current.CancellationToken));
         Assert.Empty(provider.Queries);
     }
 
@@ -190,22 +190,22 @@ public sealed class LyricsServiceTests : IDisposable
         var online = new LyricsOptions(Online: true);
         var item = Track();
 
-        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item));
+        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken));
         Assert.Single(provider.Queries);
 
         _now += TimeSpan.FromDays(6.9);
-        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item));
+        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken));
         Assert.Single(provider.Queries);
 
         _now += TimeSpan.FromDays(0.2);
-        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item));
+        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken));
         Assert.Equal(2, provider.Queries.Count);
     }
 
     [Fact]
     public async Task A_miss_mark_keeps_only_a_hash_and_a_date()
     {
-        await Service([Source("a", null)], [new FakeLyricsProvider(_ => null)], new LyricsOptions(Online: true)).GetAsync(Track("Secret Title", "Secret Artist"));
+        await Service([Source("a", null)], [new FakeLyricsProvider(_ => null)], new LyricsOptions(Online: true)).GetAsync(Track("Secret Title", "Secret Artist"), TestContext.Current.CancellationToken);
         var index = File.ReadAllText(Path.Combine(_data, "lyrics", "index.json"));
         Assert.DoesNotContain("Secret", index, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("NotFoundUtc", index);
@@ -219,8 +219,8 @@ public sealed class LyricsServiceTests : IDisposable
         var online = new LyricsOptions(Online: true);
         var item = Track();
 
-        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item));
-        Assert.Equal("later", (await Service([Source("a", null)], [provider], online).GetAsync(item))!.Lines[0].Text);
+        Assert.Null(await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken));
+        Assert.Equal("later", (await Service([Source("a", null)], [provider], online).GetAsync(item, TestContext.Current.CancellationToken))!.Lines[0].Text);
         Assert.Equal(2, provider.Queries.Count);
     }
 
@@ -230,7 +230,7 @@ public sealed class LyricsServiceTests : IDisposable
         var first = new FakeLyricsProvider(_ => null);
         var second = new FakeLyricsProvider(_ => Plain("second"));
         var service = Service([Source("a", null)], [first, second], new LyricsOptions(Online: true));
-        Assert.Equal("second", (await service.GetAsync(Track()))!.Lines[0].Text);
+        Assert.Equal("second", (await service.GetAsync(Track(), TestContext.Current.CancellationToken))!.Lines[0].Text);
         Assert.Single(first.Queries);
         Assert.Single(second.Queries);
     }
@@ -241,12 +241,12 @@ public sealed class LyricsServiceTests : IDisposable
         var source = Source("a", Plain("x"));
         var service = Service([source]);
         var item = Track();
-        var first = await service.GetAsync(item);
-        Assert.Same(first, await service.GetAsync(item));
+        var first = await service.GetAsync(item, TestContext.Current.CancellationToken);
+        Assert.Same(first, await service.GetAsync(item, TestContext.Current.CancellationToken));
         Assert.Equal(1, source.Calls);
 
         service.Invalidate(item);
-        await service.GetAsync(item);
+        await service.GetAsync(item, TestContext.Current.CancellationToken);
         Assert.Equal(2, source.Calls);
     }
 
@@ -259,8 +259,8 @@ public sealed class LyricsServiceTests : IDisposable
             MediaSources.IdentityKey = s => s.ToUpperInvariant().Replace("ALIAS", "REAL");
             var source = Source("a", Plain("x"));
             var service = Service([source]);
-            await service.GetAsync(Item("/alias/a.mp3"));
-            await service.GetAsync(Item("/REAL/a.mp3"));
+            await service.GetAsync(Item("/alias/a.mp3"), TestContext.Current.CancellationToken);
+            await service.GetAsync(Item("/REAL/a.mp3"), TestContext.Current.CancellationToken);
             Assert.Equal(1, source.Calls);
         }
         finally
@@ -276,9 +276,9 @@ public sealed class LyricsServiceTests : IDisposable
         var options = new LyricsOptions(Online: false);
         var service = new LyricsService(new LyricsStore(Path.Combine(_data, "lyrics")), [Source("a", null)], [provider], () => options, () => _now);
         var item = Track();
-        Assert.Null(await service.GetAsync(item));
+        Assert.Null(await service.GetAsync(item, TestContext.Current.CancellationToken));
         options = new LyricsOptions(Online: true);
-        Assert.NotNull(await service.GetAsync(item));
+        Assert.NotNull(await service.GetAsync(item, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -292,12 +292,12 @@ public sealed class LyricsServiceTests : IDisposable
 
         var pending = service.GetAsync(item, cancel.Token);
         while (provider.Queries.Count == 0)
-            await Task.Delay(5);
+            await Task.Delay(5, TestContext.Current.CancellationToken);
         cancel.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
 
         gate.SetResult();
-        Assert.NotNull(await service.GetAsync(item)); // asked again, not a remembered null
+        Assert.NotNull(await service.GetAsync(item, TestContext.Current.CancellationToken)); // asked again, not a remembered null
         Assert.Equal(2, provider.Queries.Count);
         Assert.False(File.Exists(Path.Combine(_data, "lyrics", "index.json")) && File.ReadAllText(Path.Combine(_data, "lyrics", "index.json")).Contains("NotFoundUtc"));
     }
@@ -317,17 +317,17 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var item = Track();
         var service = Service([Source("a", Synced("a", "b"))]);
-        var lyrics = (await service.GetAsync(item))!;
+        var lyrics = (await service.GetAsync(item, TestContext.Current.CancellationToken))!;
         Assert.Equal(0, lyrics.OffsetMs);
 
         service.SetOffset(item, -1500);
         Assert.Equal(-1500, lyrics.OffsetMs); // the held lyrics follow at once
 
         var fresh = Service([Source("a", Synced("a", "b"))]);
-        Assert.Equal(-1500, (await fresh.GetAsync(item))!.OffsetMs);
+        Assert.Equal(-1500, (await fresh.GetAsync(item, TestContext.Current.CancellationToken))!.OffsetMs);
 
         fresh.SetOffset(item, 0);
-        Assert.Equal(0, (await Service([Source("a", Synced("a"))]).GetAsync(item))!.OffsetMs);
+        Assert.Equal(0, (await Service([Source("a", Synced("a"))]).GetAsync(item, TestContext.Current.CancellationToken))!.OffsetMs);
         Assert.DoesNotContain("OffsetMs", File.ReadAllText(Path.Combine(_data, "lyrics", "index.json"))); // a zero offset leaves nothing behind
     }
 
@@ -342,7 +342,7 @@ public sealed class LyricsServiceTests : IDisposable
 
         var file = Directory.GetFiles(Path.Combine(_data, "lyrics"), "*.lrc").Single();
         Assert.StartsWith("[00:05.00]a", File.ReadAllText(file));
-        Assert.Equal(700, (await Service([]).GetAsync(item))!.OffsetMs);
+        Assert.Equal(700, (await Service([]).GetAsync(item, TestContext.Current.CancellationToken))!.OffsetMs);
     }
 
     [Fact]
@@ -351,7 +351,7 @@ public sealed class LyricsServiceTests : IDisposable
         var item = Track();
         File.WriteAllText(item.Source, "x");
         var service = Service([Source("a", null)], [new FakeLyricsProvider(_ => Synced("net"))], new LyricsOptions(Online: true));
-        await service.GetAsync(item);
+        await service.GetAsync(item, TestContext.Current.CancellationToken);
         service.SaveOverride(item, Plain("mine"));
         service.SetOffset(item, 300);
         service.DeleteOverride(item);
@@ -364,7 +364,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         var service = Service([Source("a", Plain("x"))], store: false);
         var item = Track();
-        Assert.NotNull(await service.GetAsync(item));
+        Assert.NotNull(await service.GetAsync(item, TestContext.Current.CancellationToken));
         service.SaveOverride(item, Plain("y"));
         service.SetOffset(item, 5);
         Assert.False(service.DeleteOverride(item));
@@ -396,7 +396,7 @@ public sealed class LyricsServiceTests : IDisposable
         var item = Track();
         Service([]).SaveOverride(item, Plain("mine"));
         File.WriteAllText(Path.Combine(_data, "lyrics", "index.json"), "{ not json");
-        Assert.Null(await Service([]).GetAsync(item)); // unknown without the index
+        Assert.Null(await Service([]).GetAsync(item, TestContext.Current.CancellationToken)); // unknown without the index
         Service([]).SetOffset(item, 10); // and the store repairs itself
         Assert.Contains("OffsetMs", File.ReadAllText(Path.Combine(_data, "lyrics", "index.json")));
     }
@@ -411,7 +411,7 @@ public sealed class LyricsServiceTests : IDisposable
         service.SaveOverride(item, Synced("a", "b"));
         Assert.Empty(Directory.GetFiles(Path.Combine(_data, "lyrics"), "*.txt"));
         Assert.Single(Directory.GetFiles(Path.Combine(_data, "lyrics"), "*.lrc"));
-        Assert.True((await Service([]).GetAsync(item))!.Synced);
+        Assert.True((await Service([]).GetAsync(item, TestContext.Current.CancellationToken))!.Synced);
     }
 
     [Fact]
@@ -420,7 +420,7 @@ public sealed class LyricsServiceTests : IDisposable
         var item = Track();
         var store = new LyricsStore(Path.Combine(_data, "lyrics"));
         var service = new LyricsService(store, [Source("a", null)], [new FakeLyricsProvider(_ => Synced("net"))], () => new LyricsOptions(Online: true), () => _now);
-        await service.GetAsync(item);
+        await service.GetAsync(item, TestContext.Current.CancellationToken);
         var other = Track("Other");
         service.SaveOverride(other, Plain("mine"));
 

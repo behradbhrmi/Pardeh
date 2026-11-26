@@ -157,12 +157,12 @@ public sealed class ChordTests : IDisposable
     public async Task A_chord_file_next_to_the_track_is_shown_on_its_own_or_on_the_timed_lyrics()
     {
         File.WriteAllText(Path.Combine(_music, "Song.cho"), "{title: Song}\n[Am]Hello my [G]old friend\n");
-        var alone = await Service().GetAsync(Track());
+        var alone = await Service().GetAsync(Track(), TestContext.Current.CancellationToken);
         Assert.True(alone!.HasChords);
         Assert.Equal(LyricsSources.ChordFile, alone.Source);
 
         File.WriteAllText(Path.Combine(_music, "Song.lrc"), "[00:03.00]Hello my old friend\n");
-        var merged = await Service(new SidecarLyricsSource()).GetAsync(Track());
+        var merged = await Service(new SidecarLyricsSource()).GetAsync(Track(), TestContext.Current.CancellationToken);
         Assert.True(merged!.Synced);
         Assert.True(merged.HasChords);
         Assert.Equal(LyricsSources.Sidecar, merged.Source);
@@ -173,12 +173,12 @@ public sealed class ChordTests : IDisposable
     public async Task A_text_file_counts_as_chords_only_when_it_has_them()
     {
         File.WriteAllText(Path.Combine(_music, "Song.txt"), "Just words\nand more words");
-        var plain = await Service(new SidecarLyricsSource()).GetAsync(Track());
+        var plain = await Service(new SidecarLyricsSource()).GetAsync(Track(), TestContext.Current.CancellationToken);
         Assert.False(plain!.HasChords);
         Assert.Equal(LyricsSources.Sidecar, plain.Source);
 
         File.WriteAllText(Path.Combine(_music, "Song.txt"), "[C]Just [G]words\nand more words");
-        var chorded = await Service(new SidecarLyricsSource()).GetAsync(Track());
+        var chorded = await Service(new SidecarLyricsSource()).GetAsync(Track(), TestContext.Current.CancellationToken);
         Assert.True(chorded!.HasChords);
     }
 
@@ -191,7 +191,7 @@ public sealed class ChordTests : IDisposable
         service.SaveChordsText(item, "[Dm]My [A]chords");
         service.SetTranspose(item, 3);
 
-        var fresh = await Service().GetAsync(item);
+        var fresh = await Service().GetAsync(item, TestContext.Current.CancellationToken);
         Assert.Equal(LyricsSources.OwnChords, fresh!.Source);
         Assert.Equal("My chords", fresh.Lines[0].Text);
         Assert.Equal(3, fresh.Transpose);
@@ -200,7 +200,7 @@ public sealed class ChordTests : IDisposable
 
         var again = Service();
         Assert.True(again.DeleteChordsText(item));
-        var back = await again.GetAsync(item);
+        var back = await again.GetAsync(item, TestContext.Current.CancellationToken);
         Assert.Equal("File chords", back!.Lines[0].Text);
         Assert.Equal(3, back.Transpose); // the key stays with the track
     }

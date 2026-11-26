@@ -192,7 +192,7 @@ internal sealed class MediaSessionController : IDisposable
         if (media is null || !(playing || paused))
         {
             Release();
-            _session.SetPlaybackState(new PlaybackState.Builder().SetState(PlaybackStateCode.Stopped, 0, 0).Build());
+            _session.SetPlaybackState(new PlaybackState.Builder().SetState(PlaybackStateCode.Stopped, 0, 0)!.Build());
             _metadataKey = null;
             return;
         }
@@ -257,15 +257,15 @@ internal sealed class MediaSessionController : IDisposable
             return;
         _metadataKey = key;
         var subtitle = artist.Length > 0 && album.Length > 0 ? artist + " - " + album : artist.Length > 0 ? artist : album;
-        var metadata = new MediaMetadata.Builder()
-            .PutString(MediaMetadata.MetadataKeyTitle, title)
-            .PutString(MediaMetadata.MetadataKeyArtist, artist)
-            .PutString(MediaMetadata.MetadataKeyAlbum, album)
-            .PutString(MediaMetadata.MetadataKeyDisplayTitle, title)
-            .PutString(MediaMetadata.MetadataKeyDisplaySubtitle, subtitle)
-            .PutString(MediaMetadata.MetadataKeyDisplayDescription, album)
-            .PutString(MediaMetadata.MetadataKeyMediaId, media.Source)
-            .PutLong(MediaMetadata.MetadataKeyDuration, (long)(duration * 1000));
+        var metadata = new MediaMetadata.Builder();
+        metadata.PutString(MediaMetadata.MetadataKeyTitle, title);
+        metadata.PutString(MediaMetadata.MetadataKeyArtist, artist);
+        metadata.PutString(MediaMetadata.MetadataKeyAlbum, album);
+        metadata.PutString(MediaMetadata.MetadataKeyDisplayTitle, title);
+        metadata.PutString(MediaMetadata.MetadataKeyDisplaySubtitle, subtitle);
+        metadata.PutString(MediaMetadata.MetadataKeyDisplayDescription, album);
+        metadata.PutString(MediaMetadata.MetadataKeyMediaId, media.Source);
+        metadata.PutLong(MediaMetadata.MetadataKeyDuration, (long)(duration * 1000));
         if (_player.Favorites is not null)
             metadata.PutRating(MediaMetadata.MetadataKeyUserRating, Rating.NewHeartRating(favorite)); // the heart of the favourite state
         if (media.GetAttribute("Genre") is { Length: > 0 } genre)
@@ -369,7 +369,7 @@ internal sealed class MediaSessionController : IDisposable
                 : Act("ic_notif_play", global::Android.Resource.Drawable.IcMediaPlay, "Play", ActionPlay))
             .AddAction(Act("ic_notif_next", global::Android.Resource.Drawable.IcMediaNext, "Next", ActionNext))
             .AddAction(Act("ic_notif_fwd10", global::Android.Resource.Drawable.IcMediaFf, "Forward 10 seconds", ActionForward10))
-            .SetStyle(new Notification.MediaStyle().SetMediaSession(_session.SessionToken).SetShowActionsInCompactView(1, 2, 3));
+            .SetStyle(new Notification.MediaStyle().SetMediaSession(_session.SessionToken)!.SetShowActionsInCompactView(1, 2, 3));
         var customCard = false;
         if (Pardeh.UI.AppSettings.Current.NotificationCustomCard && BuildCustomCard(title, text, playing, Button) is { } card)
         {
@@ -699,8 +699,8 @@ internal sealed class MediaSessionController : IDisposable
             return;
         _focus = new AudioFocusRequestClass.Builder(AudioFocus.Gain)
             .SetAudioAttributes(new AudioAttributes.Builder()!.SetUsage(AudioUsageKind.Media)!.SetContentType(AudioContentType.Music)!.Build()!)
-            .SetOnAudioFocusChangeListener(new FocusListener(this))
-            .Build();
+            .SetOnAudioFocusChangeListener(new FocusListener(this))!
+            .Build()!;
         _audio.RequestAudioFocus(_focus);
     }
 

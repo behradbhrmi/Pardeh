@@ -141,7 +141,7 @@ internal sealed class WidgetBridge : IDisposable
                 using var input = new MemoryStream(data);
                 using var small = Bitmap.DecodeToWidth(input, 160);
                 using var output = new MemoryStream();
-                small.Save(output, 80);
+                small.Save(output, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 _coverUri = "data:image/jpeg;base64," + Convert.ToBase64String(output.ToArray());
             }
         }

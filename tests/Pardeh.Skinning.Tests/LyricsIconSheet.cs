@@ -43,6 +43,6 @@ public sealed class LyricsIconSheet
         sheet.Arrange(new Rect(0, 0, 900, 550));
         using var bitmap = new RenderTargetBitmap(new PixelSize(900, 550), new Vector(96, 96));
         bitmap.Render(sheet);
-        bitmap.Save(file);
+        bitmap.Save(file, PngBitmapEncoderOptions.Default);
     }
 }

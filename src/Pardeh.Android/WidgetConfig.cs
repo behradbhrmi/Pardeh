@@ -41,9 +41,17 @@ internal sealed class WidgetConfig
     public void Save(Context c, int id)
     {
         string k(string n) => $"{id}.{n}";
-        Prefs(c).Edit()!.PutInt(k("theme"), Theme).PutInt(k("opacity"), Opacity).PutInt(k("text"), TextSize).PutBoolean(k("cover"), Cover)
-            .PutBoolean(k("seek"), Seekbar).PutBoolean(k("skip"), Skip).PutBoolean(k("shuffle"), Shuffle).PutBoolean(k("repeat"), Repeat)
-            .PutBoolean(k("fav"), Favorite).Apply();
+        var edit = Prefs(c).Edit()!;
+        edit.PutInt(k("theme"), Theme);
+        edit.PutInt(k("opacity"), Opacity);
+        edit.PutInt(k("text"), TextSize);
+        edit.PutBoolean(k("cover"), Cover);
+        edit.PutBoolean(k("seek"), Seekbar);
+        edit.PutBoolean(k("skip"), Skip);
+        edit.PutBoolean(k("shuffle"), Shuffle);
+        edit.PutBoolean(k("repeat"), Repeat);
+        edit.PutBoolean(k("fav"), Favorite);
+        edit.Apply();
     }
 
     public static void Delete(Context c, int id)

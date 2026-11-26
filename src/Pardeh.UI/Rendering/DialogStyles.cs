@@ -44,7 +44,7 @@ internal static class DialogStyles
         return selector;
     }
 
-    private static Style S(Func<Selector?, Selector> selector, params (AvaloniaProperty Property, object? Value)[] setters)
+    private static Style S(Func<Selector, Selector> selector, params (AvaloniaProperty Property, object? Value)[] setters)
     {
         var style = new Style(x => selector(x.Is<TemplatedControl>().Class(Class))); // dialog windows and the Settings page
         foreach (var (property, value) in setters)

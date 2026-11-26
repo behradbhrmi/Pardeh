@@ -111,10 +111,21 @@ public sealed class WidgetConfigActivity : Activity
 /// <summary>Pads a view by the system bars so nothing hides under them.</summary>
 internal sealed class InsetsPadding : Java.Lang.Object, View.IOnApplyWindowInsetsListener
 {
-    public WindowInsets? OnApplyWindowInsets(View? v, WindowInsets? insets)
+    public WindowInsets OnApplyWindowInsets(View? v, WindowInsets? insets)
     {
         if (v is not null && insets is not null)
-            v.SetPadding(insets.SystemWindowInsetLeft, insets.SystemWindowInsetTop, insets.SystemWindowInsetRight, insets.SystemWindowInsetBottom);
-        return insets;
+        {
+            if (OperatingSystem.IsAndroidVersionAtLeast(30))
+            {
+                var bars = insets.GetInsets(WindowInsets.Type.SystemBars());
+                v.SetPadding(bars.Left, bars.Top, bars.Right, bars.Bottom);
+            }
+            else
+            {
+                v.SetPadding(insets.SystemWindowInsetLeft, insets.SystemWindowInsetTop, insets.SystemWindowInsetRight, insets.SystemWindowInsetBottom);
+            }
+        }
+
+        return insets!; // the system always passes them
     }
 }

@@ -126,7 +126,7 @@ internal sealed class AndroidMediaSources : ILibrarySourceProvider
     {
         try
         {
-            using var cursor = AppContext.ContentResolver?.Query(AndroidUri.Parse(source)!, [OpenableColumns.DisplayName], null, null, null);
+            using var cursor = AppContext.ContentResolver?.Query(AndroidUri.Parse(source)!, [global::Android.Provider.IOpenableColumns.DisplayName], null, null, null);
             return cursor is not null && cursor.MoveToFirst() ? cursor.GetString(0) : null;
         }
         catch (Exception)

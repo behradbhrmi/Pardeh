@@ -41,7 +41,7 @@ internal sealed class MiniWidget : Window
                     var size = new PixelSize((int)Math.Ceiling(root.Bounds.Width), (int)Math.Ceiling(root.Bounds.Height));
                     using var bitmap = new RenderTargetBitmap(size, new Vector(96, 96));
                     bitmap.Render(root);
-                    bitmap.Save(snapshot);
+                    bitmap.Save(snapshot, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
                 }
 
                 Environment.Exit(0);

@@ -59,7 +59,6 @@ internal sealed partial class MobileLibraryView : UserControl
     private Border? _foot;
     private Border? _sheetPanel;
     private Control? _noteArt;
-    private Path? _viewIcon;
 
     protected override Size ArrangeOverride(Size finalSize)
     {
@@ -94,7 +93,7 @@ internal sealed partial class MobileLibraryView : UserControl
         _searchButton.Tapped += (_, _) => SetSearching(true);
         _searchBox = new TextBox
         {
-            Watermark = "Search music and videos", FontSize = 16, MinHeight = 40, VerticalContentAlignment = VerticalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            PlaceholderText = "Search music and videos", FontSize = 16, MinHeight = 40, VerticalContentAlignment = VerticalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(8, 0), IsVisible = false,
             Background = Brush(_t.Glass ? _t.G("#06205E") : _t.Dark ? Color.FromArgb(60, 255, 255, 255) : Colors.White), Foreground = Brush(_t.Dark ? Colors.White : Color.Parse("#1A1F36")), CornerRadius = new CornerRadius(20),
         };
@@ -415,7 +414,7 @@ internal sealed partial class MobileLibraryView : UserControl
         {
             // Inside a list of songs, artists, albums ... the box filters that list as you type; elsewhere it searches the whole library.
             _searchLocal = _applyFilter is not null;
-            _searchBox.Watermark = _searchLocal ? "Filter this list" : "Search music and videos";
+            _searchBox.PlaceholderText = _searchLocal ? "Filter this list" : "Search music and videos";
             _searchBox.Text = string.Empty;
             _searchBox.Focus();
             OnSearchText();

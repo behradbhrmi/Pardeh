@@ -70,7 +70,7 @@ internal static partial class InViewPrompt
         {
             Text = initial, FontSize = 15, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
             Height = Math.Clamp(viewHeight * 0.4, 150, 300), VerticalContentAlignment = VerticalAlignment.Top, CornerRadius = new CornerRadius(8),
-            Watermark = hint,
+            PlaceholderText = hint,
         };
         var save = Pill("Save", primary: true);
         var cancel = Pill("Cancel");

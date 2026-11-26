@@ -27,19 +27,19 @@ public sealed class PlaylistFormatTests : IDisposable
     }
 
     [Fact]
-    public void Ratings_and_plays_survive_a_rescan()
+    public async Task Ratings_and_plays_survive_a_rescan()
     {
         var song = Write("song.mp3", "x");
         var cache = Path.Combine(_folder, "library.json");
         var library = new MediaLibrary(new FakeInfoReader(), cache);
         library.Folders.Clear();
         library.Folders.Add(_folder);
-        library.ScanAsync().Wait();
+        await library.ScanAsync().WaitAsync(TestContext.Current.CancellationToken);
 
         library.SetRating(song, 4);
         library.RecordPlay(song);
         File.SetLastWriteTimeUtc(song, DateTime.UtcNow.AddMinutes(1)); // changed on disk: tags are re-read
-        library.ScanAsync().Wait();
+        await library.ScanAsync().WaitAsync(TestContext.Current.CancellationToken);
 
         var item = Assert.Single(library.Items);
         Assert.Equal(4, item.Rating);

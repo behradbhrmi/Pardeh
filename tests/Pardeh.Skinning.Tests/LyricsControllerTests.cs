@@ -45,7 +45,20 @@ public sealed class LyricsControllerTests : IDisposable
     {
         foreach (var controller in _controllers)
             controller.Dispose();
-        Directory.Delete(_data, recursive: true);
+
+        // A save started in the background can still be writing for a moment after the test has seen its result.
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Delete(_data, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 50)
+            {
+                Thread.Sleep(20);
+            }
+        }
     }
 
     private static MediaItem Track(string name) => Item("/music/" + name + ".mp3", name);
@@ -205,7 +218,7 @@ public sealed class LyricsControllerTests : IDisposable
         Assert.Equal("fast lyrics", controller.Current!.Lines[0].Text);
 
         release.SetResult();
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
         Assert.Equal("fast lyrics", controller.Current!.Lines[0].Text);
     }
 
@@ -241,7 +254,7 @@ public sealed class LyricsControllerTests : IDisposable
         var controller = Create(_ => Four());
         _enabled = false;
         _playback.Play(Track("one"));
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
         Assert.Null(controller.Current);
         Assert.False(controller.IsLoading);
 
@@ -261,7 +274,7 @@ public sealed class LyricsControllerTests : IDisposable
         });
         _playback.Play(Track("one"));
         await WaitUntil(() => !controller.IsLoading);
-        await Task.Delay(30);
+        await Task.Delay(30, TestContext.Current.CancellationToken);
 
         Assert.Empty(_events); // nothing raised before the UI thread ran the posted work
         List<Action> posted;
@@ -298,7 +311,7 @@ public sealed class LyricsControllerTests : IDisposable
         _events.Clear();
 
         _playback.Play(Track("two"));
-        await Task.Delay(50);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
         Assert.Empty(_events);
     }
 

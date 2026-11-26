@@ -49,6 +49,8 @@
        libswresample.so, libswscale.so (see docs/android-build.md). The folder name is the ABI. Without them the app still
        starts, but cannot decode anything. -->
   <ItemGroup>
+    <!-- The SDK already picks up .so files under the project: take those out first, so that each is listed once. -->
+    <AndroidNativeLibrary Remove="lib\**\*.so" />
     <AndroidNativeLibrary Include="lib\arm64-v8a\*.so" />
     <AndroidNativeLibrary Include="lib\x86_64\*.so" />
   </ItemGroup>
