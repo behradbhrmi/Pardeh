@@ -90,6 +90,12 @@ public interface IPlatformServices
 
     void OpenUrl(string url) { }
 
+    /// <summary>The installed app's version when the platform records it apart from the assemblies (Android: the package's version name); else null.</summary>
+    string? AppVersion => null;
+
+    /// <summary>The platform's build number of the installed app (Android: the version code), as text; else null.</summary>
+    string? AppBuild => null;
+
     IFileAssociationService? FileAssociations => null;
 
     IWmpImportService? WmpImport => null;

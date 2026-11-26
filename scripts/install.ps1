@@ -11,7 +11,18 @@ $exe = Join-Path $target "Pardeh.exe"
 if (-not (Test-Path (Join-Path $source "Pardeh.exe"))) { throw "Run install.ps1 from the unzipped Pardeh package." }
 
 # Close a running Pardeh so its files can be replaced.
-Get-Process Pardeh -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } | Stop-Process -Force
+$running = Get-Process Pardeh -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe }
+if ($running) {
+    $running | Stop-Process -Force
+    $running | Wait-Process -Timeout 10 -ErrorAction SilentlyContinue
+}
+
+# An earlier installation is replaced, not copied over: a standalone package leaves a .NET runtime behind, which would
+# stop the smaller package from starting. Only a folder that holds Pardeh is emptied, and never the one being installed
+# from. Your library, playlists, skins and settings are in %APPDATA%\Pardeh and are not touched.
+if ((Test-Path $exe) -and ([IO.Path]::GetFullPath($source).TrimEnd('\') -ne [IO.Path]::GetFullPath($target).TrimEnd('\'))) {
+    Get-ChildItem -LiteralPath $target -Force | Remove-Item -Recurse -Force
+}
 
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 Copy-Item -Path (Join-Path $source "*") -Destination $target -Recurse -Force

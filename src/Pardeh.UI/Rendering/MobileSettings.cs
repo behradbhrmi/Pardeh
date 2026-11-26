@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
@@ -590,7 +591,7 @@ internal sealed partial class MobileSettingsView : UserControl
             Row("Lyrics", LyricsSummary(), Chevron(), () => Open("Lyrics", LyricsPage), "@lyrics"),
             Row("Library", $"{_library.Folders.Count} monitored folders", Chevron(), () => Open("Library", LibraryPage), "M 3,5 L 8,5 L 9.5,7 L 17,7 L 17,15 L 3,15 Z")));
         panel.Children.Add(Card(
-            Row("About", AppSettings.Current.ClassicBranding ? "Windows Media Player 9.0 Mobile" : "Pardeh " + VersionText(), Chevron(), () => Open("About", AboutPage),
+            Row("About", AppSettings.Current.ClassicBranding ? "Windows Media Player 9.0 Mobile" : "Pardeh " + AppInfo.Version, Chevron(), () => Open("About", AboutPage),
                 "M 10,3 A 7,7 0 1 0 10.01,3 Z M 10,9 L 10,14 M 10,6 L 10,6.4")));
         return panel;
     }
@@ -1034,17 +1035,51 @@ internal sealed partial class MobileSettingsView : UserControl
         };
     }
 
-    /// <summary>Glass: the About panel of the design (big logo, name, version, a few lines, an OK pill), with Pardeh's own name and logo.</summary>
-    /// <summary>The app version as major.minor.build (the head's &lt;Version&gt; / ApplicationDisplayVersion).</summary>
-    private static string VersionText()
+    /// <summary>The facts of this copy, one row each.</summary>
+    private Control AboutFacts() => Card([.. AppInfo.Facts().Select(f => Row(f.Label, f.Value, null, null, minHeight: 48))]);
+
+    /// <summary>"Check for updates": asks GitHub only when tapped, says what it found, and offers the release page when there is a newer one.</summary>
+    private Control AboutUpdates()
     {
-        var v = (System.Reflection.Assembly.GetEntryAssembly() ?? typeof(MobileSettingsView).Assembly).GetName().Version;
-        return v is null ? "" : FormattableString.Invariant($"{v.Major}.{v.Minor}.{Math.Max(v.Build, 0)}");
+        var host = new StackPanel();
+        var checking = false;
+        void Show(string summary, string? page)
+        {
+            var rows = new List<Control> { Row("Check for updates", summary, Chevron(), () => _ = Check()) };
+            if (page is not null)
+                rows.Add(Row("Open release page", "Download the new version from GitHub", Chevron(), () => PlatformServices.Current.OpenUrl(page)));
+            host.Children.Clear();
+            host.Children.Add(Card([.. rows]));
+        }
+
+        async Task Check()
+        {
+            if (checking)
+                return;
+            checking = true;
+            Show("Checking...", null);
+            var result = await AppInfo.CheckForUpdate();
+            checking = false;
+            Show(result.Message, result.State == Pardeh.Core.Updates.UpdateState.Available ? result.Page : null);
+        }
+
+        Show("Contacts GitHub only when you tap", null);
+        return host;
     }
 
+    private Control AboutLinks()
+    {
+        var rows = AppInfo.Links
+            .Select(link => Row(link.Title, link.Url == AppInfo.SourcePage ? "github.com/behradbhrmi/Pardeh" : null, Chevron(), () => PlatformServices.Current.OpenUrl(link.Url), minHeight: 52))
+            .ToList();
+        rows.Add(Row("Copy details", "Version and system, for a problem report", null, () => _ = TopLevel.GetTopLevel(this)?.Clipboard?.SetTextAsync(AppInfo.Details()), minHeight: 52));
+        return Card([.. rows]);
+    }
+
+    /// <summary>Glass: the About panel of the design (big logo, name, version, a few lines), with Pardeh's own name and logo, then what both About pages offer and an OK pill.</summary>
     private Control GlassAbout()
     {
-        var version = VersionText();
+        var version = AppInfo.Version;
         TextBlock Line(string text, double size, Color color, bool bold = false) => new()
         {
             Text = text, FontSize = size, Foreground = Brush(color), FontWeight = bold ? FontWeight.Bold : FontWeight.Normal, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2),
@@ -1061,6 +1096,9 @@ internal sealed partial class MobileSettingsView : UserControl
                 Line(AppSettings.Current.ClassicBranding ? "© 2006 Microsoft Corporation. All rights reserved." : "Open-source software. Decoding by FFmpeg (LGPL).", 13, ink),
                 Line(AppSettings.Current.ClassicBranding ? "A personal recreation (Pardeh " + version + "). Decoding by FFmpeg (LGPL)." : "An independent tribute to the classic media players.", 13, _t.Sub),
                 new Border { Height = 18 },
+                AboutUpdates(),
+                AboutLinks(),
+                AboutFacts(),
                 _t.GlassPill("OK", () => GoBack()),
             },
         };
@@ -1288,11 +1326,11 @@ internal sealed partial class MobileSettingsView : UserControl
             AppSettings.Current.ClassicBranding
                 ? Logo(96, new Thickness(0, 12, 0, 8))
                 : new Border { Height = 0 },
-            Card(
-                Row(AppSettings.Current.ClassicBranding ? "Windows Media Player" : "Pardeh", AppSettings.Current.ClassicBranding ? "Version 9.0 Mobile Edition" : "Every era on screen.", null, null),
-                Row("Version", VersionText(), null, null),
-                Row("Decoders", Pardeh.Nava.Ffmpeg.FfmpegLibrary.IsAvailable ? "FFmpeg " + Pardeh.Nava.Ffmpeg.FfmpegLibrary.Version : "Not available yet", null, null)),
-            Note(AppSettings.Current.ClassicBranding ? "A personal recreation of the classic player, drawn in code. Pardeh is open source." : "An open-source tribute to the classic media players. Not affiliated with Microsoft."),
+            Card(Row(AppSettings.Current.ClassicBranding ? "Windows Media Player" : "Pardeh", AppSettings.Current.ClassicBranding ? "Version 9.0 Mobile Edition" : AppInfo.Tagline, null, null)),
+            AboutFacts(),
+            AboutUpdates(),
+            AboutLinks(),
+            Note(AppSettings.Current.ClassicBranding ? "A personal recreation of the classic player, drawn in code. Pardeh is open source." : AppInfo.Disclaimer),
         },
     };
 }

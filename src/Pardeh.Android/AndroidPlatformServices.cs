@@ -184,6 +184,36 @@ internal sealed class AndroidPlatformServices : IPlatformServices
     {
         var intent = new Intent(Intent.ActionView, global::Android.Net.Uri.Parse(url));
         intent.AddFlags(ActivityFlags.NewTask);
-        AppContext.StartActivity(intent);
+        try
+        {
+            AppContext.StartActivity(intent);
+        }
+        catch (ActivityNotFoundException)
+        {
+            global::Android.Widget.Toast.MakeText(AppContext, "No app can open this web page.", global::Android.Widget.ToastLength.Long)?.Show();
+        }
+    }
+
+    /// <summary>The version of the installed package: what the release build set, and what Android's own app info shows.</summary>
+    public string? AppVersion => Package()?.VersionName;
+
+    public string? AppBuild => Package() is { } info
+        ? "version code " + (OperatingSystem.IsAndroidVersionAtLeast(28) ? info.LongVersionCode : LegacyVersionCode(info))
+        : null;
+
+#pragma warning disable CA1422 // the only version code before Android 9
+    private static long LegacyVersionCode(global::Android.Content.PM.PackageInfo info) => info.VersionCode;
+#pragma warning restore CA1422
+
+    private static global::Android.Content.PM.PackageInfo? Package()
+    {
+        try
+        {
+            return AppContext.PackageManager?.GetPackageInfo(AppContext.PackageName!, (global::Android.Content.PM.PackageInfoFlags)0);
+        }
+        catch (global::Android.Content.PM.PackageManager.NameNotFoundException)
+        {
+            return null;
+        }
     }
 }

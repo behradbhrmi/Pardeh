@@ -1,24 +1,29 @@
 <#
 .SYNOPSIS
-    Builds a release of Pardeh and packages it as dist\Pardeh-<version>-win-x64.zip with install.ps1 inside.
+    Builds a release of Pardeh and packages it as a zip in dist\ with install.ps1 inside.
 
 .DESCRIPTION
-    Framework-dependent build (needs the .NET 11 desktop runtime on the target PC). FFmpeg comes from
+    By default the package is small and needs the .NET 11 desktop runtime on the target PC
+    (Pardeh-<version>-win-x64.zip). With -Standalone it carries its own runtime and needs nothing installed
+    (Pardeh-<version>-win-x64-standalone.zip). FFmpeg comes from
     tools\ffmpeg\win-x64 (run scripts\get-ffmpeg.ps1 first). Nothing from Windows XP is ever packaged: the script
     drops native debug symbols and refuses to produce a package that contains wmploc / skins / private files.
 
 .EXAMPLE
     .\scripts\publish.ps1 -Version 0.1.0
+    .\scripts\publish.ps1 -Version 0.1.0 -Standalone
 #>
 param(
     [string]$Version = "0.1.0",
     [string]$Runtime = "win-x64",
-    [switch]$SkipWidget
+    [switch]$SkipWidget,
+    [switch]$Standalone
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$out = Join-Path $root "dist\Pardeh-$Version-$Runtime"
+$flavour = if ($Standalone) { "-standalone" } else { "" }
+$out = Join-Path $root "dist\Pardeh-$Version-$Runtime$flavour"
 $zip = "$out.zip"
 
 if (-not (Test-Path (Join-Path $root "tools\ffmpeg\$Runtime\avcodec-62.dll"))) {
@@ -26,7 +31,8 @@ if (-not (Test-Path (Join-Path $root "tools\ffmpeg\$Runtime\avcodec-62.dll"))) {
 }
 
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
-dotnet publish (Join-Path $root "src\Pardeh.App\Pardeh.App.csproj") -c Release -r $Runtime --self-contained false `
+$selfContained = if ($Standalone) { "true" } else { "false" }
+dotnet publish (Join-Path $root "src\Pardeh.App\Pardeh.App.csproj") -c Release -r $Runtime --self-contained $selfContained `
     -p:Version=$Version -p:PublishDir="$out\" -p:DebugType=none -nologo
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
@@ -43,6 +49,13 @@ Copy-Item (Join-Path $PSScriptRoot "install.ps1") $out
 Copy-Item (Join-Path $PSScriptRoot "uninstall.ps1") $out
 Copy-Item (Join-Path $root "README.md") $out -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $root "LICENSE") $out
+if ($Standalone) {
+    # The package redistributes the .NET runtime: its license and notices go with it.
+    $dotnetRoot = Split-Path -Parent (Get-Command dotnet).Source
+    foreach ($notice in "LICENSE.txt", "ThirdPartyNotices.txt") {
+        Copy-Item (Join-Path $dotnetRoot $notice) (Join-Path $out "dotnet-$notice")
+    }
+}
 
 # The Windows 11 Widgets board widget: its own signed package, installed by install.ps1 together with the app.
 if (-not $SkipWidget) {

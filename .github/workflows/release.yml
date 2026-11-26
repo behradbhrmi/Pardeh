@@ -57,10 +57,19 @@ jobs:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
           ./scripts/publish.ps1 -Version $env:VERSION -SkipWidget
-          $folder = "dist/Pardeh-$env:VERSION-win-x64"
-          foreach ($needed in 'Pardeh.exe', 'LICENSE', 'ffmpeg/avcodec-62.dll', 'ffmpeg/LICENSE.txt') {
-            if (-not (Test-Path "$folder/$needed")) { throw "The package lacks $needed" }
+          ./scripts/publish.ps1 -Version $env:VERSION -SkipWidget -Standalone
+          $small = "dist/Pardeh-$env:VERSION-win-x64"
+          $standalone = "$small-standalone"
+          foreach ($folder in $small, $standalone) {
+            foreach ($needed in 'Pardeh.exe', 'LICENSE', 'ffmpeg/avcodec-62.dll', 'ffmpeg/LICENSE.txt') {
+              if (-not (Test-Path "$folder/$needed")) { throw "$folder lacks $needed" }
+            }
           }
+          # Only the standalone package carries the runtime, with its license.
+          foreach ($needed in 'coreclr.dll', 'dotnet-LICENSE.txt') {
+            if (-not (Test-Path "$standalone/$needed")) { throw "$standalone lacks $needed" }
+          }
+          if (Test-Path "$small/coreclr.dll") { throw "$small carries a .NET runtime" }
 
       - uses: actions/upload-artifact@v7
         with:
@@ -166,7 +175,9 @@ jobs:
           {
             echo "## Downloads"
             echo
-            echo "- **Windows 10 / 11 (x64):** the \`win-x64.zip\` file. Needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0). Unzip it and run \`install.ps1\`, or just start \`Pardeh.exe\`."
+            echo "- **Windows 10 / 11 (x64):** take one of two. Unzip it and run \`install.ps1\`, or just start \`Pardeh.exe\`."
+            echo "  - \`win-x64-standalone.zip\`: includes .NET, nothing else to install. Take this one if unsure."
+            echo "  - \`win-x64.zip\`: smaller, needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0)."
             if ls ./*.apk >/dev/null 2>&1; then
               echo "- **Android 7.0 or newer (arm64):** the \`.apk\` file."
             else

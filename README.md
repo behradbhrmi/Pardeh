@@ -17,10 +17,13 @@ published yet: [build from source](#build-and-run).
 
 | System | File | Notes |
 |---|---|---|
-| Windows 10 / 11 (x64) | `Pardeh-<version>-win-x64.zip` | Needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0). Unzip, then run `install.ps1` (no administrator rights) or just start `Pardeh.exe`. |
+| Windows 10 / 11 (x64), standalone | `Pardeh-<version>-win-x64-standalone.zip` | Includes .NET: nothing else to install. Take this one if unsure. |
+| Windows 10 / 11 (x64), small | `Pardeh-<version>-win-x64.zip` | A smaller download that needs the [.NET 11 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/11.0). |
 | Android 7.0+ (arm64) | `Pardeh-<version>-arm64-v8a.apk` | Allow installing from your browser or file manager. A release has this file only when the Android signing key was set up. |
 
-`SHA256SUMS.txt` in each release lists the checksums.
+For either Windows package: unzip, then run `install.ps1` (no administrator rights) or just start `Pardeh.exe`.
+`SHA256SUMS.txt` in each release lists the checksums. **About > Check for updates** in the app tells you when a newer
+release is out; it contacts GitHub only when you ask.
 
 ## Looks
 
@@ -196,7 +199,7 @@ dotnet run --project src/Pardeh.App -- path\to\Skin.wmz [media files...]
 With no skin argument Pardeh opens its full mode, or the last skin you used. Building the whole solution (`Pardeh.slnx`)
 also builds the Android app, which needs the Android tools: see [building for Android](docs/android-build.md).
 
-**Package for Windows** (`dist\Pardeh-<version>-win-x64.zip`):
+**Package for Windows** (a zip in `dist\`; add `-Standalone` for the package that includes .NET):
 
 ```powershell
 .\scripts\publish.ps1 -Version 1.0.0 -SkipWidget
@@ -229,7 +232,7 @@ Tests that need reference skins, FFmpeg or the internet are skipped when those a
 Environment variables for development:
 
 - `PARDEH_SNAPSHOT=out.png` (and `PARDEH_SNAPSHOT_DELAY=seconds`): renders the window to a PNG after start, without needing focus.
-- `PARDEH_SNAPSHOT_MENU=View` or `PARDEH_SNAPSHOT_DIALOG=options/2`, with `PARDEH_SNAPSHOT`: renders a menu or dialog.
+- `PARDEH_SNAPSHOT_MENU=View` or `PARDEH_SNAPSHOT_DIALOG=options/2` (or `about`), with `PARDEH_SNAPSHOT`: renders a menu or dialog.
 - `PARDEH_FULLMODE=<look>`: forces a look for one run, for example `luna`, `zune` or `glass-phone`.
 - `PARDEH_GLASS_TINT=amber`: forces a Pardeh Glass colour.
 - `PARDEH_DATA_DIR=folder`: uses this folder instead of `%APPDATA%\Pardeh`.
@@ -239,6 +242,8 @@ Environment variables for development:
 
 ## Third-party libraries
 
+- **.NET:** the standalone Windows package and the Android app include the .NET runtime (MIT); the standalone package
+  carries its license and notices.
 - **.NET packages:** Avalonia, FFmpeg.AutoGen and NAudio (MIT), Jint (BSD-2-Clause), TagLibSharp (LGPL-2.1). The optional
   Windows 11 widget also uses the Windows App SDK, under Microsoft's license.
 - **Icons:** some come from Microsoft's Fluent UI System Icons (MIT).

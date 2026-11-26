@@ -1243,6 +1243,8 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         var parts = spec.Split('/');
         if (parts[0] == "prompt")
             _ = AskAsync("Name of the new playlist:", "My playlist");
+        else if (parts[0] == "about")
+            ShowAbout();
         else
             _ = ShowOptions();
         var file = Path.Combine(Path.GetDirectoryName(path) ?? ".", Path.GetFileNameWithoutExtension(path) + "-dialog.png");
@@ -2934,12 +2936,13 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             ShowMessage("Copying stopped: " + ex.Message);
         }
     }
-    private void ShowAbout() => Platform.Inform(Top,
-        "Pardeh — every era on screen.\n\n" +
-        $"Version {(System.Reflection.Assembly.GetEntryAssembly() ?? typeof(PlayerView).Assembly).GetName().Version}\n" +
-        $"Decoders: {(Pardeh.Nava.Ffmpeg.FfmpegLibrary.IsAvailable ? "FFmpeg " + Pardeh.Nava.Ffmpeg.FfmpegLibrary.Version : OperatingSystem.IsWindows() ? "Windows Media Foundation" : "none")}\n\n" +
-        "An open-source tribute to the classic media players. Not affiliated with Microsoft.",
-        "About Pardeh");
+    private void ShowAbout()
+    {
+        if (Shell is { } window)
+            _ = Rendering.AboutDialog.Show(window);
+        else
+            Platform.Inform(Top, $"{AppInfo.Details()}\n\n{AppInfo.SourcePage}", "About Pardeh");
+    }
 
     public string? ShowOpenFileDialog(string dialogType, string filter) => Platform.OpenMediaFile(Top);
 
