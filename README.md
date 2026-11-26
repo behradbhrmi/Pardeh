@@ -58,6 +58,16 @@ Android, but the pictures are not captures from a device.
 </tr>
 </table>
 
+#### Windows Media Player 9 (imported)
+
+Pardeh can also run the original 2003 full mode, read from Windows XP files **of your own** ([how it works](#skins)).
+Pardeh does not ship those files; without them, *Pardeh Classic* above is Pardeh's own drawing of this look.
+
+<a href="docs/previews/windows/wmp9-imported.jpg"><img src="docs/previews/windows/wmp9-imported.jpg" width="414" alt="The imported Windows Media Player 9 full mode"></a>
+
+<sub>This screenshot shows artwork of Windows Media Player 9 and the Windows logo, © Microsoft Corporation. It is shown only
+to illustrate the import feature, is not part of Pardeh and is not covered by Pardeh's license.</sub>
+
 ### Android
 
 <table>
@@ -108,9 +118,6 @@ sliders. The Pardeh logo can follow the colour too.
 <td></td>
 </tr>
 </table>
-
-Your own copy of the original 2003 full mode can also be imported from Windows XP files that you have
-([how it works](#skins)). Pardeh does not ship it, so there is no preview.
 
 ## Features
 
@@ -254,7 +261,8 @@ Environment variables for development:
 
 Pardeh is free software under the [GNU General Public License, version 3](LICENSE). If you distribute it, or an app built on
 its code, you must provide the source under the same license. It comes with no warranty. Third-party libraries and designs
-keep their own licenses (above).
+keep their own licenses (above). The license does not cover Microsoft's artwork in
+`docs/previews/windows/wmp9-imported.jpg`.
 
 Pardeh is an independent project. It is not affiliated with or endorsed by Microsoft, Winamp, Sony or any other company
 whose products inspired a look. Their names and trademarks belong to their owners.
