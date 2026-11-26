@@ -33,6 +33,18 @@ Android, but the pictures are not captures from a device.
 
 ### Windows
 
+#### Windows Media Player 9 (imported)
+
+Pardeh can also run the original 2003 full mode, read from Windows XP files **of your own** ([how it works](#skins)).
+Pardeh does not ship those files; without them, *Pardeh Classic* below is Pardeh's own drawing of this look.
+
+<a href="docs/previews/windows/wmp9-imported.jpg"><img src="docs/previews/windows/wmp9-imported.jpg" width="414" alt="The imported Windows Media Player 9 full mode"></a>
+
+<sub>This screenshot shows artwork of Windows Media Player 9 and the Windows logo, © Microsoft Corporation. It is shown only
+to illustrate the import feature, is not part of Pardeh and is not covered by Pardeh's license.</sub>
+
+#### Pardeh's own looks
+
 <table>
 <tr>
 <td align="center" valign="top"><a href="docs/previews/windows/pardeh.jpg"><img src="docs/previews/windows/pardeh.jpg" width="270" alt="Pardeh Classic"></a><br>Pardeh Classic</td>
@@ -60,16 +72,6 @@ Android, but the pictures are not captures from a device.
 <td align="center" valign="top"><a href="docs/previews/windows/groove.jpg"><img src="docs/previews/windows/groove.jpg" width="270" alt="Groove (PC)"></a><br>Groove (PC)</td>
 </tr>
 </table>
-
-#### Windows Media Player 9 (imported)
-
-Pardeh can also run the original 2003 full mode, read from Windows XP files **of your own** ([how it works](#skins)).
-Pardeh does not ship those files; without them, *Pardeh Classic* above is Pardeh's own drawing of this look.
-
-<a href="docs/previews/windows/wmp9-imported.jpg"><img src="docs/previews/windows/wmp9-imported.jpg" width="414" alt="The imported Windows Media Player 9 full mode"></a>
-
-<sub>This screenshot shows artwork of Windows Media Player 9 and the Windows logo, © Microsoft Corporation. It is shown only
-to illustrate the import feature, is not part of Pardeh and is not covered by Pardeh's license.</sub>
 
 ### Android
 
