@@ -150,6 +150,17 @@ public sealed class AppSettings
 
     public bool RepeatOn { get; set; }
 
+    // Song details from online databases (Fix Info).
+
+    /// <summary>
+    /// The user agreed to Fix Info looking songs up on MusicBrainz and the Cover Art Archive. Off by default; a look-up still only
+    /// happens when asked for.
+    /// </summary>
+    public bool FixInfoOnline { get; set; }
+
+    /// <summary>Suggest the database's script for names, for example Latin in place of Persian. Off: what the song uses stays.</summary>
+    public bool FixInfoDatabaseScript { get; set; }
+
     // Lyrics. The engine reads these; a skin may show them.
 
     /// <summary>Look for lyrics of the playing track (tags, a .lrc or .txt next to it, your own saved text).</summary>

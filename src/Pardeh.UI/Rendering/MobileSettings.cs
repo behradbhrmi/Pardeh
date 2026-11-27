@@ -1031,6 +1031,11 @@ internal sealed partial class MobileSettingsView : UserControl
                 Note("Pardeh keeps the library up to date with these folders."),
                 new Border { Background = _t.CardBrush, CornerRadius = new CornerRadius(_t.Glass ? 10 : 12), Margin = new Thickness(0, 0, 0, 14), ClipToBounds = true, Child = folders },
                 Card(PlatformServices.Current.HasDeviceMedia ? [ButtonRow("Add a folder...", Add, accent: true), ButtonRow("Device music", () => _ = AddDevice(), accent: true), ButtonRow("Search folders now", () => _ = _library.ScanAsync())] : [ButtonRow("Add a folder...", Add, accent: true), ButtonRow("Search folders now", () => _ = _library.ScanAsync())]),
+                Heading("Fix Info"),
+                Card(
+                    Toggle("Look up song details online (MusicBrainz)", PlayerView.OnlineInfoPrivacy, _settings.FixInfoOnline, v => { _settings.FixInfoOnline = v; _settings.Save(); }),
+                    Toggle("Take names in the database's script", "Off: Persian names stay Persian, and Latin ones Latin", _settings.FixInfoDatabaseScript,
+                        v => { _settings.FixInfoDatabaseScript = v; _settings.Save(); })),
             },
         };
     }

@@ -139,12 +139,54 @@ internal sealed partial class PlayerView
     private async Task<ReviewResult> ReviewSong(CleanupProposal proposal, TagFields current)
     {
         var result = new ReviewResult(ReviewAnswer.Cancel);
-        await ShowPanel("Fix Info", close => new ReviewView(Ink, proposal, current, _cleanup!.Store, EditPatterns, answer =>
+        ReviewView? view = null;
+        await ShowPanel("Fix Info", close => view = new ReviewView(Ink, proposal, current, _cleanup!.Store, EditPatterns, answer =>
         {
             result = answer;
             close();
-        }));
+        }, OnlineFor(proposal, current)));
+        view?.Online?.Stop();
         return result;
+    }
+
+    // ---- looking a song up online -----------------------------------------------------------------
+
+    /// <summary>What Pardeh says it sends, wherever it asks or offers the switch.</summary>
+    internal const string OnlineInfoPrivacy =
+        "When you ask for it, sends the song's title and artist to MusicBrainz (if those find nothing, words from the file name, without website text), "
+        + "with Pardeh's name, version and project address. Covers come from the Cover Art Archive and the Internet Archive. No folders, files or personal details.";
+
+    private Core.OnlineInfo.MetadataLookup? _metadata;
+
+    // One for the app: it keeps to MusicBrainz's one request a second, and remembers what it was told.
+    private Core.OnlineInfo.MetadataLookup Metadata => _metadata ??= new Core.OnlineInfo.MetadataLookup(new Core.OnlineInfo.MusicBrainzProvider(
+        new HttpClient(new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false, UseCookies = false, ConnectTimeout = TimeSpan.FromSeconds(8), AutomaticDecompression = System.Net.DecompressionMethods.All,
+        }) { Timeout = Timeout.InfiniteTimeSpan }, // the provider times each request
+        $"Pardeh/{AppInfo.Version} ({AppInfo.SourcePage})"));
+
+    private OnlineContext OnlineFor(CleanupProposal proposal, TagFields current)
+    {
+        var seconds = _library.Items.FirstOrDefault(i => string.Equals(i.Path, proposal.Source, StringComparison.OrdinalIgnoreCase))?.DurationSeconds ?? 0;
+        if (seconds <= 0 && string.Equals(_player.CurrentMedia?.Source, proposal.Source, StringComparison.OrdinalIgnoreCase))
+            seconds = _player.Duration;
+        var steps = Core.OnlineInfo.MetadataLookup.Steps(current, proposal, seconds, _cleanup!.Store.Rules);
+        // The song as the first search sees it; one typed by hand keeps only its length and album.
+        var song = steps.Count > 0 ? steps[0].Song : new Core.OnlineInfo.LocalSong(current.Title ?? string.Empty, current.Artists ?? [], current.Album ?? string.Empty, seconds);
+        return new OnlineContext(Metadata, steps, song, AllowOnlineInfo, () => AppSettings.Current.FixInfoDatabaseScript);
+    }
+
+    private async Task<bool> AllowOnlineInfo()
+    {
+        var settings = AppSettings.Current;
+        if (settings.FixInfoOnline)
+            return true;
+        if (!await ConfirmAsync("Look up songs online?", OnlineInfoPrivacy + (Shell is null ? string.Empty : "\n\nTurn it on?"), "Turn on", "Not now"))
+            return false;
+        settings.FixInfoOnline = true;
+        settings.Save();
+        return true;
     }
 
     // Looks at the song as it is now: the scan's result may be older than the file.

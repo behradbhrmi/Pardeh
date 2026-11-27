@@ -133,7 +133,7 @@ internal sealed class BatchView : UserControl
         if (suggestions.Count == 0)
             return chosen is null ? "Details are missing, with nothing to suggest." : "Only the file name.";
         var first = suggestions.FirstOrDefault(s => s.Field == CleanupField.Title) ?? suggestions[0];
-        var text = first.Field == CleanupField.Cover ? "Cover: remove a suspected site picture"
+        var text = first.Field == CleanupField.Cover ? (first.NewCover is null ? "Cover: remove a suspected site picture" : "Cover: a new picture")
             : $"{CleanupInk.FieldName(first)}: {CleanupInk.Shown(first.Current)}  →  {(first.Suggested.Length == 0 ? "removed" : CleanupInk.Shown(first.Suggested))}";
         return suggestions.Count > 1 ? $"{text}  (+{suggestions.Count - 1} more)" : text;
     }

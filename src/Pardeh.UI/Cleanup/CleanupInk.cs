@@ -76,6 +76,8 @@ internal sealed record CleanupInk(IBrush Text, IBrush Sub, IBrush Line, IBrush B
         CleanupField.Comment => "Comment",
         CleanupField.Copyright => "Copyright",
         CleanupField.Cover => "Cover",
+        CleanupField.Year => "Year",
+        CleanupField.Track => "Track number",
         _ => TextName(suggestion.TextId ?? string.Empty),
     };
 
@@ -109,6 +111,7 @@ internal sealed record CleanupInk(IBrush Text, IBrush Sub, IBrush Line, IBrush B
         CleanupReason.FromFileName => "From the file name",
         CleanupReason.BrokenText => "Repaired text: check it reads right",
         CleanupReason.Repeated => "The same words are on songs of unrelated artists",
+        CleanupReason.Online => "From MusicBrainz",
         _ => "The same picture is on songs of unrelated artists",
     };
 
