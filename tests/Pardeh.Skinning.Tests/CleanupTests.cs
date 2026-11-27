@@ -114,6 +114,18 @@ public sealed class CleanupAnalyzerTests
     }
 
     [Fact]
+    public void A_suspected_cover_does_not_keep_safe_fixes_out_of_a_batch()
+    {
+        var library = SiteLibrary();
+        var signals = LibrarySignals.Build(library);
+
+        var proposal = CleanupAnalyzer.Analyze(Track("x.mp3", "Song | site.com", "Someone", cover: "logo"), signals);
+
+        Assert.Equal((CleanupLevel.Ready, 1), (proposal.Level, proposal.Suspicions));
+        Assert.False(Of(proposal, CleanupField.Cover).Selected);
+    }
+
+    [Fact]
     public void A_phrase_the_user_keeps_is_not_suggested()
     {
         var library = SiteLibrary();

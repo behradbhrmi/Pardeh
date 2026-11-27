@@ -96,9 +96,12 @@ internal sealed class SkinCanvas : Control
         {
             var (x, y) = Local(target, p);
             target.OnPointerMoved(x, y);
+            UpdateToolTip(target.ToolTipAt(x, y));
         }
-
-        UpdateToolTip(target);
+        else
+        {
+            UpdateToolTip((string?)null);
+        }
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -563,9 +566,8 @@ internal sealed class SkinCanvas : Control
 
     private string? _toolTip;
 
-    private void UpdateToolTip(SkinElement? element)
+    private void UpdateToolTip(string? text)
     {
-        var text = element?.ToolTip;
         if (string.IsNullOrEmpty(text))
             text = null;
         if (text == _toolTip)

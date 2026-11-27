@@ -207,6 +207,9 @@ internal sealed partial class MobileLibraryView
                 chips.Children.Add(Chip("Video", null, kind == 2, () => { kind = kind == 2 ? 0 : 2; _chips[level] = (favoritesOnly, kind); Refresh(); }));
             }
 
+            if (level == "songs" && _host.CleanupCount() is > 0 and var waiting)
+                chips.Children.Add(Chip($"Clean up ({waiting})", null, false, _host.CleanUp));
+
             if (shown.Count > 0)
             {
                 var play = new Path { Data = Geometry.Parse("M 0,0 L 9,5 L 0,10 Z"), Fill = Brush(_t.Glass ? Colors.White : _t.Royal ? Color.Parse("#2E55C4") : _t.Ink), Width = 9, Height = 10, VerticalAlignment = VerticalAlignment.Center };

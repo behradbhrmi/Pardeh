@@ -117,8 +117,8 @@ internal sealed partial class PlayerView
     }
 
     private Task<bool> ConfirmAsync(string title, string body, string yes, string no) =>
-        Shell is { } shell
-            ? Task.FromResult(Platform.Confirm(shell, body, title))
+        DialogOwner is { } owner
+            ? Task.FromResult(Platform.Confirm(owner, body, title))
             : Rendering.InViewPrompt.Confirm(_overlay, _session?.CurrentView?.Root.Width ?? 360, title, body, yes, no);
 
     private async Task EditLyrics()

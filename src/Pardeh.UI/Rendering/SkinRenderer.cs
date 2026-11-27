@@ -1241,8 +1241,12 @@ internal sealed partial class SkinRenderer
                         continue;
                     }
 
-                    var cell = Text(cells[c], ink, columns[c].Width - 8);
-                    var cellX = c == columns.Count - 1 ? columns[c].X + columns[c].Width - cell.Width - 6 : columns[c].X + 4;
+                    var marked = c == 0 && session.NeedsCleanup?.Invoke(track.Path) == true;
+                    var inset = marked ? LibraryElement.BadgeWidth : 0;
+                    if (marked)
+                        DrawCleanupMark(context, new Point(columns[c].X + 4 + LibraryElement.BadgeWidth / 2 - 1, y + rowH / 2), 5);
+                    var cell = Text(cells[c], ink, Math.Max(1, columns[c].Width - 8 - inset));
+                    var cellX = c == columns.Count - 1 ? columns[c].X + columns[c].Width - cell.Width - 6 : columns[c].X + 4 + inset;
                     context.DrawText(cell, new Point(cellX, y + 1 + (rowH - 15) / 2));
                 }
             }
@@ -1292,6 +1296,16 @@ internal sealed partial class SkinRenderer
     }
 
     /// <summary>The library toolbar's small icons (Pardeh's own drawings in the classic style).</summary>
+    // The "Needs cleanup" mark: a small amber disc with an exclamation mark, readable on light and dark lists.
+    private static void DrawCleanupMark(DrawingContext context, Point centre, double radius)
+    {
+        context.DrawEllipse(CleanupMarkFill, null, centre, radius, radius);
+        context.FillRectangle(Brushes.Black, new Rect(centre.X - 1, centre.Y - radius * 0.62, 2, radius * 0.72));
+        context.FillRectangle(Brushes.Black, new Rect(centre.X - 1, centre.Y + radius * 0.34, 2, 2));
+    }
+
+    private static readonly IBrush CleanupMarkFill = new SolidColorBrush(Color.Parse("#FFB300"));
+
     private static void DrawLibraryToolIcon(DrawingContext context, string key, Rect r, bool enabled)
     {
         double x = r.X, y = r.Y;

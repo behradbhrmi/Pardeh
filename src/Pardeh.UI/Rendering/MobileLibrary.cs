@@ -18,7 +18,21 @@ internal sealed record MobileLibraryHost(
     Func<PlaylistStore?> Playlists,
     Action OpenNowPlaying,
     Action OpenRadio,
-    Action<string> EditTags);
+    Action<string> EditTags)
+{
+    /// <summary>Opens Fix Info for a song.</summary>
+    public Action<string> FixInfo { get; init; } = _ => { };
+
+    /// <summary>Opens Clean Up Library.</summary>
+    public Action CleanUp { get; init; } = () => { };
+
+    public Func<string, bool> NeedsCleanup { get; init; } = _ => false;
+
+    public Func<string, bool> CanFixInfo { get; init; } = _ => false;
+
+    /// <summary>How many songs have something to clean up.</summary>
+    public Func<int> CleanupCount { get; init; } = () => 0;
+}
 
 /// <summary>
 /// The Library page of the phone skins, a touch library over the real library data (<see cref="MediaLibrary"/>, the
@@ -409,6 +423,13 @@ internal sealed partial class MobileLibraryView : UserControl
                 _renamed[result.Source] = now;
         }
 
+        if (!_searching)
+            Render(_scroll.Offset.Y);
+    }
+
+    /// <summary>Draws the page on show again (its marks changed).</summary>
+    public void Reload()
+    {
         if (!_searching)
             Render(_scroll.Offset.Y);
     }
@@ -1268,6 +1289,8 @@ internal sealed partial class MobileLibraryView : UserControl
         heart.VerticalAlignment = VerticalAlignment.Center;
         heart.IsVisible = IsFavorite(item.Path);
         var timeBox = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Children = { heart, time } };
+        if (_host.NeedsCleanup(item.Path))
+            timeBox.Children.Insert(0, CleanupMark(item));
         var heartEntry = (item.Path, (Action<bool>)(on => heart.IsVisible = on));
         _heartPaint.Add(heartEntry);
         var dots = new Border { Width = 48, Height = 56, Background = Brushes.Transparent, Child = Icon("M 10,4 m -1.4,0 a 1.4,1.4 0 1,0 2.8,0 a 1.4,1.4 0 1,0 -2.8,0 M 10,10 m -1.4,0 a 1.4,1.4 0 1,0 2.8,0 a 1.4,1.4 0 1,0 -2.8,0 M 10,16 m -1.4,0 a 1.4,1.4 0 1,0 2.8,0 a 1.4,1.4 0 1,0 -2.8,0", _t.Sub, 22, 1.4) };
@@ -1334,6 +1357,24 @@ internal sealed partial class MobileLibraryView : UserControl
         grid.DetachedFromVisualTree += (_, _) => _rowPaint.Remove(entry);
         Paint(playing);
         return shell is not null ? shell : grid;
+    }
+
+    // The "Needs cleanup" mark: a small amber disc in a target big enough to tap; a tap opens the review.
+    private Control CleanupMark(LibraryItem item)
+    {
+        var disc = new Border
+        {
+            Width = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Brush(Color.Parse("#FFB300")),
+            Child = new TextBlock { Text = "!", FontSize = 12, FontWeight = FontWeight.Bold, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+        };
+        var target = new Border { Width = 40, MinHeight = 44, Background = Brushes.Transparent, Child = disc };
+        ToolTip.SetTip(target, "Needs cleanup");
+        target.Tapped += (_, e) =>
+        {
+            e.Handled = true;
+            _host.FixInfo(item.Path);
+        };
+        return target;
     }
 
     // ---- Menus (bottom sheet) -------------------------------------------------------------------
@@ -1406,7 +1447,7 @@ internal sealed partial class MobileLibraryView : UserControl
         "Play next" => "@playnext",
         "Add to queue" => "@queue",
         "Add to playlist..." => "@list",
-        "Edit info..." => "@pencil",
+        "Edit info..." or "Fix info..." => "@pencil",
         "Add to favourites" => "@heartoff",
         "Remove from favourites" => "@heart",
         "Remove from library" => "@remove",
@@ -1416,6 +1457,7 @@ internal sealed partial class MobileLibraryView : UserControl
 
     private void RowMenu(LibraryItem item) => OpenSheet(item.Title,
     [
+        .. _host.CanFixInfo(item.Path) ? new (string, Action)[] { ("Fix info...", () => _host.FixInfo(item.Path)) } : [],
         ("Play", () => _player.OpenItems([item.ToMediaItem()], 0)),
         ("Play next", () =>
         {

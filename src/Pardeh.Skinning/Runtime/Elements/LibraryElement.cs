@@ -486,6 +486,9 @@ public sealed class LibraryElement(SkinView view, SkinNode node, SkinElement? pa
             var index = TrackScroll + row;
             SelectedTrack = index < _tracks.Count ? index : -1;
 
+            if (BadgeAt(x, y) >= 0)
+                FixInfo();
+
             // Clicking the stars rates the track; clicking the current rating clears it.
             if (SelectedTrack >= 0 && ColumnAt(x) == RatingColumn)
             {
@@ -558,7 +561,10 @@ public sealed class LibraryElement(SkinView view, SkinNode node, SkinElement? pa
             return false;
         SelectedTrack = index;
         View.Invalidate();
-        string[] items = ["Play", "Add to Now Playing", "Rate", "Edit Info...", RemoveLabel, "Open File Location"];
+        List<string> items = ["Play", "Add to Now Playing", "Rate", "Edit Info...", RemoveLabel, "Open File Location"];
+        var fixable = View.Session.CanFixInfo?.Invoke(_tracks[index].Path) == true;
+        if (fixable)
+            items.Add("Fix Info...");
         View.Session.Host.ShowPopup(View, items, -1, choice =>
         {
             switch (choice)
@@ -569,6 +575,7 @@ public sealed class LibraryElement(SkinView view, SkinNode node, SkinElement? pa
                 case 3: EditInfo(); break;
                 case 4: Press("delete"); break;
                 case 5: Press("reveal"); break;
+                case 6 when fixable: FixInfo(); break;
             }
         });
         return true;
@@ -599,6 +606,28 @@ public sealed class LibraryElement(SkinView view, SkinNode node, SkinElement? pa
             return;
         View.Session.Host.RunCommand("editTags", [_tracks[SelectedTrack].Path]);
     }
+
+    private void FixInfo()
+    {
+        if (SelectedTrack >= 0 && SelectedTrack < _tracks.Count)
+            View.Session.Host.RunCommand("fixInfo", [_tracks[SelectedTrack].Path]);
+    }
+
+    /// <summary>Width of the "Needs cleanup" mark at the start of a title (the renderer draws it this wide).</summary>
+    public const double BadgeWidth = 14;
+
+    /// <summary>The row whose "Needs cleanup" mark is at a point of the desktop list, or -1.</summary>
+    private int BadgeAt(double x, double y)
+    {
+        if (Phone || x < ListLeft || y < ListTop || y >= Height - BottomBarHeight || ColumnBounds.Count == 0
+            || x < ColumnBounds[0].X || x >= ColumnBounds[0].X + 4 + BadgeWidth)
+            return -1;
+        var index = TrackScroll + (int)((y - ListTop) / RowHeight);
+        return index < _tracks.Count && View.Session.NeedsCleanup?.Invoke(_tracks[index].Path) == true ? index : -1;
+    }
+
+    public override string? ToolTipAt(double x, double y) =>
+        BadgeAt(x, y) >= 0 ? "Needs cleanup. Click to look at it." : base.ToolTipAt(x, y);
 
     private string RemoveLabel => SelectedNodeKey == "nowplaying" ? "Remove from Now Playing"
         : SelectedNodeKey.StartsWith("playlist:", StringComparison.Ordinal) ? "Remove from Playlist"

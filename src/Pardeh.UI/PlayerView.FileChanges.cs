@@ -22,8 +22,10 @@ internal sealed partial class PlayerView
     {
         try
         {
+            StartCleanup();
             var references = new LibraryReferences(_library, new TagMediaInfoReader())
             {
+                Cleanup = _cleanup!.Store,
                 Lyrics = _lyrics.Service.Store,
                 LyricsChanged = item => _lyrics.Service.Invalidate(item),
                 Playlists = _playlists,
@@ -42,6 +44,9 @@ internal sealed partial class PlayerView
             changes.Playback = link;
             changes.Changed += (_, results) =>
             {
+                _cleanup?.Forget(results.SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
+                _cleanupSeen = 0;
+                _cleanupSoon?.Start();
                 _phoneLibrary?.FilesChanged(results);
                 _lyrics.Refresh();
                 _queueStore?.Save();

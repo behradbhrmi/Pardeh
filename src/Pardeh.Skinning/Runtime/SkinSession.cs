@@ -150,6 +150,12 @@ public sealed class SkinSession : IDisposable
     /// <summary>"My Playlists" (saved .m3u8 playlists), when the host provides them.</summary>
     public Pardeh.Core.Library.PlaylistStore? Playlists { get; set; }
 
+    /// <summary>True for a library song with something to clean up: lists mark it. Null: no marks.</summary>
+    public Func<string, bool>? NeedsCleanup { get; set; }
+
+    /// <summary>True for a file whose details the host can fix (not a stream). Null: no "Fix Info" entries.</summary>
+    public Func<string, bool>? CanFixInfo { get; set; }
+
     /// <summary>The lyrics of the playing track for LYRICS elements, when the host has them (the phone looks).</summary>
     public ILyricsFeed? Lyrics { get; set; }
 

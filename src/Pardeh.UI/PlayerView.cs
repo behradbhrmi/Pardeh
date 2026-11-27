@@ -732,7 +732,11 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             if (_phoneLibrary is not null)
                 _overlay.Children.Remove(_phoneLibrary);
             var host = new Rendering.MobileLibraryHost(() => Top, () => _session?.Playlists, () => ShowPane("now"), () => ShowPane("radio"),
-                path => _session?.Host.RunCommand("editTags", [path]));
+                path => _session?.Host.RunCommand("editTags", [path]))
+            {
+                FixInfo = path => _ = FixInfo(path), CleanUp = () => _ = CleanUpLibrary(), NeedsCleanup = NeedsCleanup, CanFixInfo = CanFixInfo,
+                CleanupCount = () => _marked.Count,
+            };
             _phoneLibrary = new Rendering.MobileLibraryView(_player, _library, host, ((Rendering.ISettingsHost)this).PhoneTheme);
             _phoneLibrarySession = _session;
             _overlay.Children.Add(_phoneLibrary);
@@ -1087,7 +1091,10 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         Pardeh.Skinning.Runtime.Elements.LibraryElement.RowHeight = phone ? 30 : 15;
         Pardeh.Skinning.Runtime.Elements.PlaylistElement.RowHeight = phone ? (PhoneSkin.KeyOf(package.SourcePath) is { } key ? key switch { "glass-phone" => 30, "winamp-phone" => 40, "groove-phone" => 56, _ => 46 } : 30) : 15; // touch queue rows of two lines (title, artist); Glass: one line
         Pardeh.Skinning.Runtime.Panes.ListPaneElement.RowHeight = phone ? 30 : 16;
-        _session = new SkinSession(package, _player, this, _decoder, _preferences) { Library = _library, Playlists = _playlists, Resources = _wmpResources, Lyrics = _lyricsFeed };
+        _session = new SkinSession(package, _player, this, _decoder, _preferences)
+        {
+            Library = _library, Playlists = _playlists, Resources = _wmpResources, Lyrics = _lyricsFeed, NeedsCleanup = NeedsCleanup, CanFixInfo = CanFixInfo,
+        };
         StartupMarks.Mark("session created");
         _session.Start();
         StartupMarks.Mark("session started (script run)");
@@ -1657,6 +1664,8 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         };
         if (PhoneSkin.IsPhoneKey(CurrentFullModeKey()))
             items.Insert(items.IndexOf(skinsMenu), Item(PhoneToolsItem, ShowPhoneTools));
+        foreach (var cleanup in CleanupMenuEntries())
+            items.Insert(items.IndexOf(skinsMenu), Item(cleanup.Header, cleanup.Run));
         if (UndoFileChangeEntry() is { } undo)
             items.Insert(items.IndexOf(skinsMenu), Item(undo.Header, undo.Run));
         // The compact window and the bars-only window have no menu bar: what it holds is reachable here too.
@@ -1709,6 +1718,12 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         {
             _activeMenu = null;
             menu.Close();
+            return true;
+        }
+
+        if (_openPanels.Count > 0)
+        {
+            _openPanels[^1]();
             return true;
         }
 
@@ -1975,6 +1990,10 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 return null;
             case "openurl":
                 Dispatcher.UIThread.Post(OpenUrl);
+                return null;
+            case "fixinfo":
+                var fixPath = Arg(0);
+                Dispatcher.UIThread.Post(() => _ = FixInfo(fixPath));
                 return null;
             case "edittags":
                 var tagPath = Arg(0);
@@ -2282,6 +2301,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 .. OperatingSystem.IsAndroid() ? Array.Empty<object>() : [WindowStyleMenu()],
                 GlyphItem("", "Settings", () => ShowPane("skins")),
                 .. PhoneSkin.IsPhoneKey(CurrentFullModeKey()) ? new object[] { GlyphItem("", PhoneToolsItem, ShowPhoneTools) } : [],
+                .. CleanupMenuEntries().Select(e => (object)Item(e.Header, e.Run)),
                 .. UndoFileChangeEntry() is { } undoChange ? new object[] { Item(undoChange.Header, undoChange.Run) } : [],
                 new Separator(),
                 new MenuItem { Header = "Play", Icon = Glyph(""), ItemsSource = MenuItems("play") },
@@ -2298,6 +2318,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 .. OperatingSystem.IsAndroid() ? Array.Empty<object>() : [RecentAddressMenu()],
                 Item("Add Folder to Library...", AddFolderToLibrary),
                 Item("Search Library Again", () => _ = _library.ScanAsync()),
+                .. CleanupMenuEntries().Select(e => (object)Item(e.Header, e.Run)),
                 .. UndoFileChangeEntry() is { } undoFile ? new object[] { Item(undoFile.Header, undoFile.Run) } : [],
                 new Separator(),
                 .. ImportMenu(),
@@ -3007,7 +3028,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         return formatted.WidthIncludingTrailingWhitespace;
     }
 
-    public void ShowMessage(string text) => Platform.Inform(Top, text, "Pardeh");
+    public void ShowMessage(string text) => Platform.Inform(DialogOwner ?? Top, text, "Pardeh");
 
     public void Log(string message)
     {

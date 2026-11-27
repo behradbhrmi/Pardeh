@@ -298,6 +298,9 @@ public class SkinElement : IScriptable
 
     public virtual string? ToolTip => GetString("toolTip") ?? GetString("upToolTip");
 
+    /// <summary>The tip for a place inside the element (a mark in a list row); by default the element's own.</summary>
+    public virtual string? ToolTipAt(double x, double y) => ToolTip;
+
     public virtual string? Cursor => GetString("cursor");
 
     public virtual void OnPointerEnter()

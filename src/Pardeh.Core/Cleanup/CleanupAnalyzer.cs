@@ -49,6 +49,9 @@ public sealed record CleanupSuggestion(CleanupField Field, string? TextId, strin
 {
     /// <summary>The embedded picture meant (for <see cref="CleanupField.Cover"/>).</summary>
     public string? CoverHash { get; init; }
+
+    /// <summary>Something that only repeats across the library, which a band name or a compilation cover can do too.</summary>
+    public bool IsSuspicion => Reason is CleanupReason.Repeated or CleanupReason.RepeatedCover;
 }
 
 public enum CleanupLevel
@@ -56,7 +59,7 @@ public enum CleanupLevel
     /// <summary>Nothing to do.</summary>
     Clean,
 
-    /// <summary>Every suggestion is a safe one.</summary>
+    /// <summary>It has safe suggestions, and all else is only a suspicion that can be left alone.</summary>
     Ready,
 
     /// <summary>Someone has to look: a guess, or something missing with nothing to suggest.</summary>
@@ -65,10 +68,14 @@ public enum CleanupLevel
 
 public sealed record CleanupProposal(string Source, string FileName, IReadOnlyList<CleanupSuggestion> Suggestions, bool MissingDetails)
 {
+    // A site's logo is on most of its downloads: were a suspicion enough to need a look, no batch could do the sure work.
     public CleanupLevel Level =>
         Suggestions.Count == 0 && !MissingDetails ? CleanupLevel.Clean
-        : Suggestions.Count > 0 && Suggestions.All(s => s.Selected) && !MissingDetails ? CleanupLevel.Ready
+        : !MissingDetails && Suggestions.Any(s => s.Selected) && Suggestions.All(s => s.Selected || s.IsSuspicion) ? CleanupLevel.Ready
         : CleanupLevel.Review;
+
+    /// <summary>Suspected words or pictures that a batch leaves alone.</summary>
+    public int Suspicions => Suggestions.Count(s => !s.Selected && s.IsSuspicion);
 }
 
 /// <summary>What only a look at the whole library can tell. Both are suspicions: a band name or a compilation cover can look the same.</summary>

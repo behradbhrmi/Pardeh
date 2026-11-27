@@ -405,7 +405,10 @@ public sealed class PlaylistElement(SkinView view, SkinNode node, SkinElement? p
         View.Invalidate();
         var item = list.Items[index];
         var favorite = player.IsFavorite(item);
-        string[] items = ["Play", favorite ? "Remove from favourites" : "Add to favourites", "Remove from list", "Move up", "Move down"];
+        List<string> items = ["Play", favorite ? "Remove from favourites" : "Add to favourites", "Remove from list", "Move up", "Move down"];
+        // Only files can be fixed, not streams.
+        if (View.Session.CanFixInfo?.Invoke(item.Source) == true)
+            items.Add("Fix Info...");
         View.Session.Host.ShowPopup(View, items, -1, choice =>
         {
             switch (choice)
@@ -415,6 +418,7 @@ public sealed class PlaylistElement(SkinView view, SkinNode node, SkinElement? p
                 case 2: list.RemoveAt(index); SelectedIndex = -1; break;
                 case 3 when index > 0: list.Move(index, index - 1); SelectedIndex = index - 1; break;
                 case 4 when index < list.Count - 1: list.Move(index, index + 1); SelectedIndex = index + 1; break;
+                case 5: View.Session.Host.RunCommand("fixInfo", [item.Source]); break;
             }
 
             View.Invalidate();
