@@ -159,10 +159,18 @@ sliders. The Pardeh logo can follow the colour too.
 - Cleans up downloaded songs, one at a time or the whole library: website text in tags and covers, names read from file
   names, and file renaming by a pattern of yours (off by default). You see every change first, and can undo it.
 - These checks run on your device. Songs that need a look are marked in the library.
-- For one song, you can also look up its details and cover online. This is **off** until you turn it on, and happens only
-  when you ask. It sends the title and artist (or words from the file name) to [MusicBrainz](https://musicbrainz.org),
-  with the app's name, version and this project's address. Covers come from the
-  [Cover Art Archive](https://coverartarchive.org) on the Internet Archive; they belong to their owners.
+- You can also look up details and covers online. This is **off** until you turn it on. It sends a song's title and
+  artist (or words from the file name) to [MusicBrainz](https://musicbrainz.org), with the app's name, version and this
+  project's address. Covers come from the [Cover Art Archive](https://coverartarchive.org) on the Internet Archive; they
+  belong to their owners.
+  - **One song:** only when you ask.
+  - **Check Library Online:** started by you, after it says how many songs it will send and roughly how long it takes and
+    how much data it uses. You can pause or stop it; what it found is saved. Strong matches are ticked, the rest are
+    reviewed one at a time, and nothing changes until you have seen a summary. Covers are downloaded only if you tick
+    them, for the songs you apply. A large library takes hours: MusicBrainz allows about one request a second.
+  - **Check the playing song:** a second setting, also **off**. A song that plays for a few seconds is looked up by
+    itself, once. Nothing is changed.
+- A blue mark shows a song with a match found online, an amber one a song that needs cleaning up.
 
 ### Lyrics, chords and tabs
 
