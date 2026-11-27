@@ -179,9 +179,13 @@ public sealed class LookupHistory
 
     /// <summary>A match's own page at the service, or null when there is none that is safe to open.</summary>
     public static Uri? PageOf(string service, HistoryMatch match) =>
-        service == MusicBrainzName && Guid.TryParse(match.Id, out var id) ? new Uri($"https://musicbrainz.org/recording/{id:D}") : null;
+        service == MusicBrainzName && Guid.TryParse(match.Id, out var id) ? new Uri($"https://musicbrainz.org/recording/{id:D}")
+        // A catalog's id is the file's own page there.
+        : service == CommonsName && SafeLinks.Check(match.Id) is { Host: "commons.wikimedia.org" } page ? page
+        : null;
 
     private const string MusicBrainzName = "MusicBrainz";
+    private const string CommonsName = "Wikimedia Commons";
 
     private static HistoryOutcome OutcomeOf(OnlineGroup group) => group switch
     {

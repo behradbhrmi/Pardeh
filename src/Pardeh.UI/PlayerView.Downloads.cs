@@ -11,6 +11,8 @@ internal sealed partial class PlayerView
     /// <summary>What Pardeh says downloads send, wherever it asks or offers the switch.</summary>
     internal const string DownloadPrivacy =
         "Pardeh downloads only what you choose, and checks that it is a complete audio file before adding it."
+        + " Searching free files sends the words you type to Wikimedia Commons, with Pardeh's name, version and project address;"
+        + " downloads from it come from Wikimedia's file server, which gets the same."
 #if PARDEH_LINK_DOWNLOADS
         + " A pasted link sends a request to the host in the link, as \"Pardeh/1.0\" (to Wikimedia, with Pardeh's version and project address)."
         + " Pardeh can't know the licence of a pasted link's file."
@@ -26,7 +28,7 @@ internal sealed partial class PlayerView
         var rules = new DownloadRules();
         var engine = new DownloadEngine(rules.CreateClient(), rules,
             new AudioCheck(() => Pardeh.Nava.AudioDigest.IsAvailable, (path, cancel) => Pardeh.Nava.AudioDigest.Scan(path, 0, cancel)),
-            new Pardeh.Nava.TagEditor(), $"Pardeh/{AppInfo.Version} ({AppInfo.SourcePage})");
+            new Pardeh.Nava.TagEditor(), ContactAgent);
         var store = new DownloadStore(Path.Combine(AppPaths.DataDirectory, "downloads"), Path.Combine(AppPaths.DataDirectory, "downloads.json"));
         _downloads = new DownloadManager(engine, store, Platform.CreateDownloadTarget());
         _downloads.Changed += (_, _) =>
@@ -93,7 +95,65 @@ internal sealed partial class PlayerView
         Play = record => _player.OpenItems([_library.Find(record.Source)?.ToMediaItem() ?? new Core.Playback.MediaItem(record.Source)], 0),
         Reveal = Shell is null ? null : record => Platform.RevealInFileManager(record.Source),
         IsThere = record => MediaSources.Exists(record.Source),
+        SearchCatalog = ShowCatalog,
     };
+
+    private IDownloadCatalog? _catalog;
+    private bool _catalogShown;
+
+    // One for the app: it keeps to its pace.
+    private IDownloadCatalog Catalog => _catalog ??= new CommonsCatalog(
+        new HttpClient(new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false, UseCookies = false, ConnectTimeout = TimeSpan.FromSeconds(10), AutomaticDecompression = System.Net.DecompressionMethods.All,
+        }) { Timeout = Timeout.InfiniteTimeSpan }, // the catalog times each request
+        ContactAgent);
+
+    private static string ContactAgent => $"Pardeh/{AppInfo.Version} ({AppInfo.SourcePage})";
+
+    private async Task ShowCatalog()
+    {
+        if (_downloads is not { } downloads || _catalogShown)
+            return;
+        _catalogShown = true;
+        var started = false;
+        try
+        {
+            await ShowPanel("Free files", close => new CatalogView(Ink, new CatalogContext(Catalog, downloads)
+            {
+                Allow = AllowDownloads,
+                Remember = RememberCatalogSearch,
+                OpenPage = OpenWebPage,
+                Started = () =>
+                {
+                    started = true;
+                    close();
+                },
+            }, close));
+        }
+        finally
+        {
+            _catalogShown = false;
+        }
+
+        // The download is shown where downloads are.
+        if (started && _downloadsView is null)
+            await ShowDownloads();
+        else
+            _downloadsView?.Fill();
+    }
+
+    private void RememberCatalogSearch(string words, IReadOnlyList<CatalogFile> files)
+    {
+        if (_history is not { } history)
+            return;
+        history.AddSearch(Catalog.Name, words, null,
+        [
+            .. files.Where(f => f.SourcePage is not null).Take(Core.OnlineInfo.LookupHistory.KeptMatches)
+                .Select(f => new Core.OnlineInfo.HistoryMatch(f.SourcePage!.AbsoluteUri, f.Title, f.Creator, f.LicenseName, 0, (int)Math.Min(f.Seconds * 1000, int.MaxValue))),
+        ]);
+        history.Flush();
+    }
 
     private async Task ShowDownloads()
     {

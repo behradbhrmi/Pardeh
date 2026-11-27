@@ -41,14 +41,19 @@ internal sealed partial class PlayerView
         _searching = true;
         try
         {
-            await ShowPanel("Search Online", close => new SearchOnlineView(Ink, new SearchOnlineContext
+            await ShowPanel("Search Online", close =>
             {
-                Lookup = Metadata,
-                Allow = AllowOnlineInfo,
-                Remember = result => RememberSearch(result, null),
-                WhereToGet = (target, other) => WhereToGet(target, other),
-                OpenPage = OpenWebPage,
-            }, close));
+                var free = Ink.Button("Search free files to download...", () => _ = ShowCatalog());
+                free.HorizontalAlignment = Shell is null ? Avalonia.Layout.HorizontalAlignment.Stretch : Avalonia.Layout.HorizontalAlignment.Left;
+                return new SearchOnlineView(Ink, new SearchOnlineContext
+                {
+                    Lookup = Metadata,
+                    Allow = AllowOnlineInfo,
+                    Remember = result => RememberSearch(result, null),
+                    WhereToGet = (target, other) => WhereToGet(target, other),
+                    OpenPage = OpenWebPage,
+                }, close, free);
+            });
         }
         finally
         {
@@ -125,10 +130,19 @@ internal sealed partial class PlayerView
     /// <summary>A look-up from the history, asked again. What to tell the user.</summary>
     private async Task<string> LookUpAgain(LookupHistoryRow row, CancellationToken cancel)
     {
-        if (!await AllowOnlineInfo())
+        // A search of free files goes where it went before, under the downloads switch.
+        var catalog = row.Service == Catalog.Name;
+        if (!await (catalog ? AllowDownloads() : AllowOnlineInfo()))
             return string.Empty;
         try
         {
+            if (catalog)
+            {
+                var files = await Catalog.SearchAsync(row.SearchedTitle, cancel);
+                RememberCatalogSearch(row.SearchedTitle, files);
+                return Said(files.Count);
+            }
+
             if (row.Source is { } source && SongFor(source) is { } song && _checker is { } checker)
             {
                 var entry = await checker.CheckAsync(song, cancel);
@@ -147,7 +161,7 @@ internal sealed partial class PlayerView
         {
             return string.Empty;
         }
-        catch (Exception ex) when (ex is MetadataException or IOException or UnauthorizedAccessException or Core.Changes.TagEditException or NotSupportedException)
+        catch (Exception ex) when (ex is MetadataException or Core.Downloads.DownloadException or IOException or UnauthorizedAccessException or Core.Changes.TagEditException or NotSupportedException)
         {
             return ex.Message;
         }
