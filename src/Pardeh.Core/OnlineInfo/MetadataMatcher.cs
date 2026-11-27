@@ -310,7 +310,9 @@ public static partial class MetadataMatcher
             .ThenByDescending(m => m.SameVersion)
             .ThenByDescending(m => m.Title)
             .ThenByDescending(m => m.Artist)
-            .ThenBy(m => m.LengthDifference is not { } d ? 2 : d <= SameLength ? 0 : d <= 10 ? 1 : 3)
+            // An unknown length says no more than a wrong one: it must not put a bare entry above the well-known recording
+            // when the file has, say, a site's intro.
+            .ThenBy(m => m.LengthDifference is not { } d ? 2 : d <= SameLength ? 0 : d <= 10 ? 1 : 2)
             .ThenByDescending(m => m.SameAlbum)
             .ThenByDescending(m => m.Candidate.Releases.Any(r => r.Official))
             // Of many entries for one song, the one on the most releases is the one people mean.

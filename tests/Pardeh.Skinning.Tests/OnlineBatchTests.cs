@@ -69,6 +69,15 @@ public sealed class MatchTuningTests
     public void A_database_entry_noted_as_a_cover_is_not_the_plain_song() =>
         Assert.NotEqual(MatchLevel.Strong, Level(OnlineData.Song(), OnlineData.Candidate(disambiguation: "tribute band cover")));
 
+    [Fact]
+    public void With_no_length_that_fits_the_well_known_recording_comes_before_a_bare_entry()
+    {
+        var bare = OnlineData.Candidate(seconds: 0, releases: [OnlineData.Release("Bootleg", group: "b")]);
+        var known = OnlineData.Candidate(releases: [OnlineData.Release(group: "a"), OnlineData.Release("Second", group: "c")]) with { Id = "known" };
+
+        Assert.Equal("known", MetadataMatcher.Rank(OnlineData.Song(seconds: 240), [bare, known])[0].Candidate.Id);
+    }
+
     [Theory]
     [InlineData("Intro")]
     [InlineData("Outro")]
