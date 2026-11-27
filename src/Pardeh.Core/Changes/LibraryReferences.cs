@@ -47,12 +47,17 @@ public sealed class LibraryReferences(MediaLibrary library, IMediaInfoReader rea
     public BookmarkStore? Bookmarks { get; init; }
     public VideoPositionStore? VideoPositions { get; init; }
 
+    /// <summary>Which songs the user told cleanup to leave alone.</summary>
+    public Cleanup.CleanupStore? Cleanup { get; init; }
+
     public IQueueLink? Queue { get; set; }
 
     public ReferenceSnapshot Capture(string source) => new(LyricsTrackKey.From(reader.Read(source)), library.Find(source));
 
+    // The length is compared first: making a key hashes text, which adds up over a large library in a long batch.
     private bool KeyUsedElsewhere(LyricsTrackKey key, params string?[] except) =>
-        library.Items.Any(i => !except.Contains(i.Path, StringComparer.OrdinalIgnoreCase) && LyricsTrackKey.From(i.ToMediaItem()).Hash == key.Hash);
+        library.Items.Any(i => (int)Math.Round(TimeSpan.FromSeconds(i.DurationSeconds).TotalSeconds) == key.DurationSeconds
+            && !except.Contains(i.Path, StringComparer.OrdinalIgnoreCase) && LyricsTrackKey.From(i.ToMediaItem()) == key);
 
     // ---- A rename or a tag change ---------------------------------------------------------------
 
@@ -84,6 +89,7 @@ public sealed class LibraryReferences(MediaLibrary library, IMediaInfoReader rea
         {
             Bookmarks?.Move(source, newSource);
             VideoPositions?.Move(source, newSource);
+            Cleanup?.Move(source, newSource);
         }
 
         Queue?.Relink(source, newSource, fresh);
@@ -126,6 +132,7 @@ public sealed class LibraryReferences(MediaLibrary library, IMediaInfoReader rea
                 lyrics.Transfer(before.Key, key, lyrics.PlanTransfer(before.Key, key), KeyUsedElsewhere(before.Key, source, restored));
             Bookmarks?.Move(source, restored);
             VideoPositions?.Move(source, restored);
+            Cleanup?.Move(source, restored);
         }
 
         LyricsChanged?.Invoke(fresh);

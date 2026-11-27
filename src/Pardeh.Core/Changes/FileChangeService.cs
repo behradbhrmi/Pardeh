@@ -29,6 +29,9 @@ public enum ResultStatus
 
     /// <summary>The system or the user refused access.</summary>
     Denied,
+
+    /// <summary>The user stopped the batch before this file.</summary>
+    Cancelled,
 }
 
 /// <param name="Source">The file as it was asked for.</param>
@@ -46,6 +49,12 @@ public sealed record ChangeOptions
 {
     /// <summary>Asked once when files of a batch are playing. Null, or false: those files are left for later.</summary>
     public Func<IReadOnlyList<string>, Task<bool>>? MayInterruptPlayback { get; init; }
+
+    /// <summary>Told how many files of the batch are finished.</summary>
+    public IProgress<(int Done, int Total)>? Progress { get; init; }
+
+    /// <summary>Stops between two files: those done stay done (and can be undone), the rest are left alone.</summary>
+    public CancellationToken Cancel { get; init; }
 }
 
 /// <summary>
@@ -215,11 +224,22 @@ public sealed class FileChangeService(
             await AskAboutPlaybackAsync(batch, refused, options);
             await TrashAsync(batch, undone);
 
-            foreach (var item in batch.Items.Where(i => i.State == ItemState.Pending))
+            var waiting = batch.Items.Where(i => i.State == ItemState.Pending).ToList();
+            for (var n = 0; n < waiting.Count; n++)
             {
+                var item = waiting[n];
+                options.Progress?.Report((n, waiting.Count));
+                if (options.Cancel.IsCancellationRequested)
+                {
+                    Skip(batch, item, refused, ResultStatus.Cancelled, "Stopped before this file.");
+                    continue;
+                }
+
                 await ExecuteOneAsync(batch, item);
                 Finish(batch, item, undone);
             }
+
+            options.Progress?.Report((waiting.Count, waiting.Count));
 
             batch.Finished = true;
             journal.Save(batch);
@@ -625,6 +645,9 @@ public sealed class FileChangeService(
         "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6",
         "LPT7", "LPT8", "LPT9",
     };
+
+    /// <summary>A name Windows keeps for devices ("CON", "COM1"), which no file may have.</summary>
+    public static bool IsReservedName(string stem) => Reserved.Contains(stem.Split('.')[0].TrimEnd());
 
     internal static void CheckName(string name, string oldName)
     {
