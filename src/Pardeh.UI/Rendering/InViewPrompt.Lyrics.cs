@@ -32,7 +32,8 @@ internal static partial class InViewPrompt
     }
 
     /// <summary>A question with a title, an explanation and two buttons. True when the user agreed.</summary>
-    public static Task<bool> Confirm(Canvas overlay, double viewWidth, string title, string body, string yes, string no)
+    /// <param name="answerWith">Given the way to answer without a button, for the Back key.</param>
+    public static Task<bool> Confirm(Canvas overlay, double viewWidth, string title, string body, string yes, string no, Action<Action<bool>>? answerWith = null)
     {
         var done = new TaskCompletionSource<bool>();
         var ok = Pill(yes, primary: true);
@@ -56,6 +57,7 @@ internal static partial class InViewPrompt
 
         ok.Click += (_, _) => Finish(true);
         cancel.Click += (_, _) => Finish(false);
+        answerWith?.Invoke(Finish);
         return done.Task;
     }
 

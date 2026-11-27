@@ -44,6 +44,45 @@ internal sealed record CleanupInk(IBrush Text, IBrush Sub, IBrush Line, IBrush B
         return button;
     }
 
+    private static ComboBox? _openList;
+    private static long? _listClosedAt;
+
+    /// <summary>A drop-down list that the phone's Back key closes by itself.</summary>
+    public ComboBox Combo()
+    {
+        var box = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = Narrow ? 42 : 24 };
+        if (Narrow)
+        {
+            // Long entries wrap; touch needs no scroll bar.
+            ScrollViewer.SetVerticalScrollBarVisibility(box, Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden);
+            ScrollViewer.SetHorizontalScrollBarVisibility(box, Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled);
+            box.ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((text, _) => new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap });
+        }
+
+        box.DropDownOpened += (_, _) => _openList = box;
+        box.DropDownClosed += (_, _) =>
+        {
+            _openList = null;
+            _listClosedAt = Environment.TickCount64;
+        };
+        return box;
+    }
+
+    /// <summary>
+    /// For the Back key: closes an open list, or says that this very press just did (Android sends Escape, which closes it,
+    /// before Back).
+    /// </summary>
+    public static bool BackClosedList()
+    {
+        var open = _openList is { IsDropDownOpen: true };
+        if (open)
+            _openList!.IsDropDownOpen = false;
+        var just = OperatingSystem.IsAndroid() && _listClosedAt is { } at && Environment.TickCount64 - at < 400;
+        _openList = null;
+        _listClosedAt = null;
+        return open || just;
+    }
+
     public CheckBox Tick(string text, bool on)
     {
         var box = new CheckBox { IsChecked = on, VerticalAlignment = VerticalAlignment.Center, MinHeight = Narrow ? 40 : 0 };

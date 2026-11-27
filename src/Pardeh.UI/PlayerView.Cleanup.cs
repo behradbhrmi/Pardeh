@@ -243,7 +243,7 @@ internal sealed partial class PlayerView
                 ShowMessage((failed.Count == result.Results.Count ? "Nothing was changed. " : "Some of it could not be changed. ") + failed[0].Message);
             }
             else if (Shell is null && result.BatchId is { } batch
-                && !await Rendering.InViewPrompt.Confirm(_overlay, _session?.CurrentView?.Root.Width ?? 360, "Fixed", plan.Summary, "OK", "Undo"))
+                && !await AskInView("Fixed", plan.Summary, "OK", "Undo", onBack: true))
             {
                 await Undo(batch);
             }
@@ -356,7 +356,8 @@ internal sealed partial class PlayerView
         if (result.CanUndo && result.BatchId is { } batch)
         {
             // The desktop's question box has only Yes and No, so it is worded for them.
-            if (!await ConfirmAsync("Finished", text + (Shell is null ? "\nUndo is also in the menu." : "\n\nKeep the changes? No undoes them now; Undo is also in the menu."), "OK", "Undo"))
+            if (!await ConfirmAsync("Finished", text + (Shell is null ? "\nUndo is also in the menu." : "\n\nKeep the changes? No undoes them now; Undo is also in the menu."), "OK", "Undo",
+                    onBack: true))
                 await Undo(batch);
         }
         else

@@ -64,7 +64,7 @@ internal sealed class BatchView : UserControl
             ScrollViewer.SetVerticalScrollBarVisibility(_list, Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden);
 
         _rename = ink.Tick("Rename files too", scanner.Store.RenameFiles);
-        _patterns = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = ink.Narrow ? 42 : 24 };
+        _patterns = ink.Combo();
         FillPatterns();
         var patternButton = ink.Button("Patterns...", async () =>
         {

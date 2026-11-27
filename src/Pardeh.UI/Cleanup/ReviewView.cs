@@ -66,7 +66,8 @@ internal sealed class ReviewView : UserControl
         list.Children.AddRange([_fields, _coverFields, _textFields]);
 
         _rename = ink.Tick("Rename the file", store.RenameFiles);
-        _patterns = new ComboBox { MinWidth = ink.Narrow ? 0 : 260, HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = ink.Narrow ? 42 : 24 };
+        _patterns = ink.Combo();
+        _patterns.MinWidth = ink.Narrow ? 0 : 260;
         FillPatterns(store.DefaultPattern);
         _newName = ink.Label(string.Empty, colour: ink.Sub);
         _rename.IsCheckedChanged += (_, _) => Preview();

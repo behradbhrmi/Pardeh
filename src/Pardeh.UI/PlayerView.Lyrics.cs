@@ -116,10 +116,31 @@ internal sealed partial class PlayerView
         return true;
     }
 
-    private Task<bool> ConfirmAsync(string title, string body, string yes, string no) =>
+    /// <param name="onBack">What the phone's Back key answers. True where the "no" button does something, such as undoing.</param>
+    private Task<bool> ConfirmAsync(string title, string body, string yes, string no, bool onBack = false) =>
         DialogOwner is { } owner
             ? Task.FromResult(Platform.Confirm(owner, body, title))
-            : Rendering.InViewPrompt.Confirm(_overlay, _session?.CurrentView?.Root.Width ?? 360, title, body, yes, no);
+            : AskInView(title, body, yes, no, onBack);
+
+    // The question is on top of any open panel, so Back answers it first.
+    private async Task<bool> AskInView(string title, string body, string yes, string no, bool onBack)
+    {
+        Action? back = null;
+        var asked = Rendering.InViewPrompt.Confirm(_overlay, _session?.CurrentView?.Root.Width ?? 360, title, body, yes, no, answer =>
+        {
+            back = () => answer(onBack);
+            _openPanels.Add(back);
+        });
+        try
+        {
+            return await asked;
+        }
+        finally
+        {
+            if (back is not null)
+                _openPanels.Remove(back);
+        }
+    }
 
     private async Task EditLyrics()
     {

@@ -121,8 +121,7 @@ internal sealed partial class PlayerView
             {
                 case ResultStatus.Done when Shell is null && result.BatchId is { } batch:
                     // A phone has no menu bar: the way back is offered right away (and stays in the menu).
-                    if (!await Rendering.InViewPrompt.Confirm(_overlay, _session?.CurrentView?.Root.Width ?? 360, "Saved",
-                            outcome.Message ?? "The new details are in the file.", "OK", "Undo"))
+                    if (!await AskInView("Saved", outcome.Message ?? "The new details are in the file.", "OK", "Undo", onBack: true))
                         await Undo(batch);
                     break;
                 case ResultStatus.Done or ResultStatus.Unchanged:

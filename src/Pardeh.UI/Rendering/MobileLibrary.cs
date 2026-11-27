@@ -423,15 +423,29 @@ internal sealed partial class MobileLibraryView : UserControl
                 _renamed[result.Source] = now;
         }
 
-        if (!_searching)
-            Render(_scroll.Offset.Y);
+        Reload();
     }
 
-    /// <summary>Draws the page on show again (its marks changed).</summary>
+    /// <summary>Draws what is on show again (its songs or marks changed), keeping an open search and the place scrolled to.</summary>
     public void Reload()
     {
+        var offset = _scroll.Offset.Y;
         if (!_searching)
-            Render(_scroll.Offset.Y);
+        {
+            Render(offset);
+        }
+        else if (_searchLocal)
+        {
+            // The page is built again, unfiltered; the box still holds what filters it.
+            Render(offset);
+            _back.IsVisible = true;
+            OnSearchText();
+        }
+        else
+        {
+            OnSearchText();
+            RestoreOffset(offset);
+        }
     }
 
     /// <summary>The songs a page was opened with, as they are in the library now.</summary>

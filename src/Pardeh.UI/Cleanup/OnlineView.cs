@@ -169,14 +169,19 @@ internal sealed class OnlineView : UserControl
     // Persian name are laid out before it.
     private const string Dot = "‎ · ";
 
-    private static string Describe(MetadataMatch match)
+    private string Describe(MetadataMatch match)
     {
         var candidate = match.Candidate;
-        var parts = new List<string> { match.Level.ToString(), candidate.Title + " - " + candidate.ArtistText, Length(candidate.LengthMs) };
+        var name = candidate.Title + " - " + candidate.ArtistText;
+        var parts = new List<string> { match.Level.ToString(), Length(candidate.LengthMs) };
         if (candidate.FirstYear is var year and > 0)
             parts.Add(year.ToString(CultureInfo.InvariantCulture));
         if (candidate.Disambiguation.Length > 0)
             parts.Add(candidate.Disambiguation);
+        // A phone is too narrow for one line, and what tells the entries apart must not be what is cut off.
+        if (_ink.Narrow)
+            return string.Join(Dot, parts) + "\n" + name;
+        parts.Insert(1, name);
         return string.Join(Dot, parts);
     }
 
@@ -193,10 +198,13 @@ internal sealed class OnlineView : UserControl
         return string.Join(Dot, parts);
     }
 
-    private ComboBox Choice(IEnumerable<string> items) => new()
+    private ComboBox Choice(IEnumerable<string> items)
     {
-        ItemsSource = items.ToList(), SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = _ink.Narrow ? 42 : 24,
-    };
+        var box = _ink.Combo();
+        box.ItemsSource = items.ToList();
+        box.SelectedIndex = 0;
+        return box;
+    }
 
     private void ShowResult(LookupResult result)
     {
@@ -216,7 +224,7 @@ internal sealed class OnlineView : UserControl
         var level = _ink.Label(string.Empty, 15, bold: true);
         var reason = _ink.Label(string.Empty, colour: _ink.Sub);
         var matchBox = Choice(matches.Select(Describe));
-        var releaseBox = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = _ink.Narrow ? 42 : 24 };
+        var releaseBox = _ink.Combo();
         var cover = _ink.Label(string.Empty, 12, colour: _ink.Sub);
         IReadOnlyList<MetadataRelease> releases = [];
         var filling = false;

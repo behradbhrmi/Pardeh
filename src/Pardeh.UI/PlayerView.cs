@@ -1722,6 +1722,10 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             return true;
         }
 
+        // A list open on a cleanup screen is the innermost thing.
+        if (CleanupViews.CleanupInk.BackClosedList())
+            return true;
+
         if (_openPanels.Count > 0)
         {
             _openPanels[^1]();
