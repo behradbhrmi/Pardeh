@@ -35,6 +35,9 @@ internal sealed record HistoryContext(LookupHistory History)
 
     /// <summary>Shows the host, asks, and opens the page in the browser.</summary>
     public Func<Uri, string, Task> OpenPage { get; init; } = (_, _) => Task.CompletedTask;
+
+    /// <summary>Opens "Where to get it" for a recording.</summary>
+    public Func<LinkTarget, Task> WhereToGet { get; init; } = _ => Task.CompletedTask;
 }
 
 /// <summary>How a look-up reads on screen.</summary>
@@ -98,6 +101,7 @@ internal sealed class HistoryView : UserControl
     private readonly ObservableCollection<LookupHistoryRow> _rows = [];
     private readonly ListBox _list = new() { Background = Avalonia.Media.Brushes.Transparent, Padding = new Thickness(0) };
     private readonly CheckBox _keep;
+    private readonly CheckBox _linked;
     private readonly Button _clear;
     private bool _filling;
 
@@ -124,7 +128,9 @@ internal sealed class HistoryView : UserControl
         var filters = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 8, Children = { _outcome, _service } };
         Grid.SetColumn(_service, 1);
         _status = ink.Label(string.Empty, 12, colour: ink.Sub);
-        var top = new StackPanel { Spacing = 6, Children = { _search, filters, _status } };
+        _linked = ink.Tick("Only songs with links found", false);
+        _linked.IsCheckedChanged += (_, _) => Fill();
+        var top = new StackPanel { Spacing = 6, Children = { _search, filters, _linked, _status } };
 
         // Only once shown: a list that follows the rows belongs to the screen's thread from then on.
         _list.AttachedToVisualTree += (_, _) => _list.ItemsSource ??= _rows;
@@ -182,7 +188,8 @@ internal sealed class HistoryView : UserControl
             }
 
             var service = _service.SelectedItem as string is { } one && one != AnyService ? one : null;
-            var found = LookupHistory.Filter(all, _search.Text, Outcomes[Math.Max(0, _outcome.SelectedIndex)].Value, service).ToList();
+            var found = LookupHistory.Filter(all, _search.Text, Outcomes[Math.Max(0, _outcome.SelectedIndex)].Value, service,
+                _linked.IsChecked == true ? LookupHistory.HasLinks : null).ToList();
             if (!found.SequenceEqual(_rows))
             {
                 _rows.Clear();
@@ -309,13 +316,22 @@ internal sealed class HistoryEntryView : UserControl
     private Control MatchBox(LookupHistoryRow row, HistoryMatch match)
     {
         var inside = new StackPanel { Spacing = 6, Children = { _ink.Label(HistoryText.Describe(match)) } };
+        if (match.Links is { } links)
+            inside.Children.Add(_ink.Label(links.Count == 0 ? "No links were listed when asked."
+                : "Links found: " + string.Join(", ", links.GroupBy(l => l.Kind).Select(g => $"{LinksView.Heading(g.Key).ToLowerInvariant()} ({g.Count()})")),
+                12, colour: _ink.Sub));
         var buttons = new WrapPanel();
-        if (LookupHistory.PageOf(row.Service, match) is { } page)
+        void Add(Button button)
         {
-            var open = _ink.Button("Open on " + row.Service, () => _ = _context.OpenPage(page, "The song's page on " + row.Service + "."));
-            open.Margin = new Thickness(0, 0, 8, 0);
-            buttons.Children.Add(open);
+            button.Margin = new Thickness(0, 0, 8, 4);
+            buttons.Children.Add(button);
         }
+
+        // Links are a MusicBrainz thing.
+        if (row.Service == "MusicBrainz" && Guid.TryParse(match.Id, out _))
+            Add(_ink.Button("Where to get it...", () => _ = _context.WhereToGet(new LinkTarget(match.Id, HistoryText.Pair(match.Title, match.Artist)))));
+        if (LookupHistory.PageOf(row.Service, match) is { } page)
+            Add(_ink.Button("Open on " + row.Service, () => _ = _context.OpenPage(page, "The song's page on " + row.Service + ".")));
 
         if (buttons.Children.Count > 0)
             inside.Children.Add(buttons);

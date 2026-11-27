@@ -41,6 +41,50 @@ public sealed record MetadataCandidate(string Id, string Title, string Disambigu
 
 public sealed record CoverImage(byte[] Data, string MimeType);
 
+/// <summary>What a link listed for a song leads to. In the order they are shown.</summary>
+public enum SongLinkKind
+{
+    /// <summary>A page where the song is listed as free to download. A page, never the file itself.</summary>
+    FreeDownloadPage,
+
+    Buy,
+
+    /// <summary>Listening without paying.</summary>
+    Stream,
+
+    /// <summary>Listening with a subscription.</summary>
+    Subscription,
+}
+
+/// <summary>A page listed for a song. Anyone can edit the database, so it is a pointer and not a promise.</summary>
+/// <param name="Address">An https address.</param>
+/// <param name="Release">The release it is listed on, or null when it is listed on the recording itself.</param>
+public sealed record SongLink(SongLinkKind Kind, string Address, string? Release = null)
+{
+    /// <summary>The host the link leads to.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Site => SafeLinks.Check(Address) is { } page ? page.IdnHost : string.Empty;
+}
+
+/// <param name="Links">By kind.</param>
+/// <param name="Insecure">Links left out because they don't use https (or can't be opened safely).</param>
+/// <param name="ReleasesSeen">The releases looked at, of <paramref name="Releases"/>.</param>
+public sealed record SongLinks(IReadOnlyList<SongLink> Links, int Insecure = 0, int ReleasesSeen = 0, int Releases = 0);
+
+/// <summary>Which web addresses may be offered for opening in the browser.</summary>
+public static class SafeLinks
+{
+    private const int MaxAddress = 2000;
+
+    /// <summary>The address, when it is an https page of a named public site; else null.</summary>
+    public static Uri? Check(string? address) =>
+        address is { Length: > 0 and <= MaxAddress } && Uri.TryCreate(address, UriKind.Absolute, out var page)
+        && page.Scheme == Uri.UriSchemeHttps && page.IsDefaultPort && page.UserInfo.Length == 0
+        && page.HostNameType == UriHostNameType.Dns && Downloads.NetworkRules.IsPublicName(page.IdnHost)
+            ? page
+            : null;
+}
+
 /// <summary>A database of song information.</summary>
 public interface IMetadataProvider
 {
@@ -52,6 +96,9 @@ public interface IMetadataProvider
     /// <summary>The front cover for a release, or null when there is none. Throws <see cref="MetadataException"/> when the service could not be asked.</summary>
     /// <param name="small">Only the 500 pixel picture, for many songs at once: less to download and to hold.</param>
     Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel, bool small = false);
+
+    /// <summary>The pages listed for a recording and its releases. Throws <see cref="MetadataException"/> when the service could not be asked.</summary>
+    Task<SongLinks> LinksAsync(string recordingId, CancellationToken cancel) => Task.FromResult(new SongLinks([]));
 }
 
 /// <summary>A service that could not be asked. The message is for the user.</summary>

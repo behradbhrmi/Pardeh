@@ -72,6 +72,79 @@ public sealed class MusicBrainzProvider : IMetadataProvider
         return query.ToString();
     }
 
+    private const int KeptLinks = 60, KeptPerSite = 3;
+
+    /// <summary>Two requests: the recording's own links, then those of the releases that hold it (the first hundred).</summary>
+    public async Task<SongLinks> LinksAsync(string recordingId, CancellationToken cancel)
+    {
+        if (!Guid.TryParse(recordingId, out var id))
+            return new SongLinks([]);
+        var own = await GetAsync(new Uri($"{SearchAddress}/{id:D}?inc=url-rels&fmt=json"), "MusicBrainz", MaxAnswer, cancel).ConfigureAwait(false);
+        var releases = await GetAsync(new Uri($"https://musicbrainz.org/ws/2/release?recording={id:D}&inc=url-rels&limit=100&fmt=json"), "MusicBrainz", MaxAnswer, cancel)
+            .ConfigureAwait(false);
+        try
+        {
+            using var first = JsonDocument.Parse(own ?? "{}"u8.ToArray());
+            using var second = JsonDocument.Parse(releases ?? "{}"u8.ToArray());
+            return ParseLinks(first.RootElement, second.RootElement);
+        }
+        catch (JsonException ex)
+        {
+            throw new MetadataException("MusicBrainz sent an answer that can't be read.", ex);
+        }
+    }
+
+    internal static SongLinks ParseLinks(JsonElement recording, JsonElement releases)
+    {
+        var found = new List<SongLink>();
+        var seen = new HashSet<(SongLinkKind, string)>();
+        var insecure = new HashSet<string>(StringComparer.Ordinal);
+        var perSite = new Dictionary<(SongLinkKind, string), int>();
+
+        void Add(JsonElement entity, string? release)
+        {
+            foreach (var relation in Items(entity, "relations"))
+            {
+                // A link marked as ended no longer holds.
+                if (relation.TryGetProperty("ended", out var ended) && ended.ValueKind == JsonValueKind.True)
+                    continue;
+                SongLinkKind? kind = Text(relation, "type") switch
+                {
+                    "download for free" => SongLinkKind.FreeDownloadPage,
+                    "purchase for download" or "purchase for mail-order" => SongLinkKind.Buy,
+                    "free streaming" => SongLinkKind.Stream,
+                    "streaming" => SongLinkKind.Subscription,
+                    _ => null,
+                };
+                if (kind is not { } what || !relation.TryGetProperty("url", out var url) || url.ValueKind != JsonValueKind.Object
+                    || !url.TryGetProperty("resource", out var resource) || resource.ValueKind != JsonValueKind.String || resource.GetString() is not { } address)
+                    continue;
+                if (SafeLinks.Check(address) is not { } page)
+                {
+                    insecure.Add(address);
+                    continue;
+                }
+
+                var site = (what, page.IdnHost);
+                if (!seen.Add((what, page.AbsoluteUri)) || perSite.GetValueOrDefault(site) >= KeptPerSite)
+                    continue;
+                perSite[site] = perSite.GetValueOrDefault(site) + 1;
+                found.Add(new SongLink(what, page.AbsoluteUri, release));
+            }
+        }
+
+        Add(recording, null);
+        var looked = 0;
+        foreach (var release in Items(releases, "releases"))
+        {
+            looked++;
+            Add(release, Text(release, "title") is { Length: > 0 } title ? title : null);
+        }
+
+        // The sort keeps the recording's own links first within each kind.
+        return new SongLinks([.. found.OrderBy(l => l.Kind).Take(KeptLinks)], insecure.Count, looked, Math.Max(looked, Number(releases, "release-count")));
+    }
+
     public async Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel, bool small = false)
     {
         var places = new List<string>();

@@ -28,6 +28,9 @@ public enum HistoryOutcome
 /// <param name="Id">The service's own id.</param>
 public sealed record HistoryMatch(string Id, string Title, string Artist, string Album, uint Year, int LengthMs)
 {
+    /// <summary>The links found for it, or null when they were never asked for.</summary>
+    public IReadOnlyList<SongLink>? Links { get; init; }
+
     public static HistoryMatch From(MetadataCandidate candidate) => new(candidate.Id, candidate.Title, candidate.ArtistText,
         MetadataMatcher.Releases(candidate, string.Empty).FirstOrDefault()?.Title ?? string.Empty, candidate.FirstYear, candidate.LengthMs);
 }
@@ -220,6 +223,28 @@ public sealed class LookupHistory
         Save();
         Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Links were asked for: every row that found that recording now has them.</summary>
+    public void SetLinks(string service, string matchId, IReadOnlyList<SongLink> links)
+    {
+        var any = false;
+        lock (_gate)
+            for (var i = 0; i < _rows.Count; i++)
+                if (_rows[i].Service == service && _rows[i].Matches.Any(m => m.Id == matchId))
+                {
+                    _rows[i] = _rows[i] with { Matches = [.. _rows[i].Matches.Select(m => m.Id == matchId ? m with { Links = links } : m)] };
+                    any = true;
+                }
+
+        if (!any)
+            return;
+        lock (_gate)
+            _unsaved++;
+        Save();
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public static bool HasLinks(LookupHistoryRow row) => row.Matches.Any(m => m.Links is { Count: > 0 });
 
     /// <summary>A file was renamed or moved by the app: its rows go on pointing at it.</summary>
     public void Moved(string from, string to)

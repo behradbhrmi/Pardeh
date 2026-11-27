@@ -23,6 +23,9 @@ internal sealed record OnlineContext(MetadataLookup Lookup, IReadOnlyList<Lookup
 
     /// <summary>Told what a search typed by hand found, for the history.</summary>
     public Action<LookupResult> RememberTyped { get; init; } = _ => { };
+
+    /// <summary>Opens "Where to get it" for a recording; null where it can't be.</summary>
+    public Action<MetadataCandidate>? WhereToGet { get; init; }
 }
 
 /// <summary>
@@ -242,6 +245,14 @@ internal sealed class OnlineView : UserControl
     {
         var searched = result.Searched is { } search ? _ink.Label(Searched(search), 12, colour: _ink.Sub) : null;
         Button[] Actions() => saved is null ? [ByHand()] : [_ink.Button("Look up again", () => _ = Look()), ByHand()];
+        MetadataCandidate? chosen = null;
+        Button[] ActionsWithLinks() => _context.WhereToGet is { } where
+            ? [_ink.Button("Where to get it...", () =>
+            {
+                if (chosen is not null)
+                    where(chosen);
+            }), .. Actions()]
+            : Actions();
         if (result.Matches.Count == 0)
         {
             var none = new List<Control> { _ink.Label("No match on MusicBrainz.", bold: true), _ink.Label("The fixes made on this device are below.", colour: _ink.Sub) };
@@ -277,7 +288,8 @@ internal sealed class OnlineView : UserControl
         void ChooseMatch()
         {
             var match = matches[Math.Max(0, matchBox.SelectedIndex)];
-            level.Text = "Match: " + (match.Level == MatchLevel.None ? "None" : match.Level.ToString());
+            chosen = match.Candidate;
+            level.Text ="Match: " + (match.Level == MatchLevel.None ? "None" : match.Level.ToString());
             reason.Text = match.Reason + (match.Level == MatchLevel.Strong ? "." : ". Check before ticking anything.");
             releases = MetadataMatcher.Releases(match.Candidate, _context.Song.Album);
             filling = true;
@@ -303,7 +315,7 @@ internal sealed class OnlineView : UserControl
         shown.AddRange(
         [
             _ink.Label(matches.Count > 1 ? $"Other matches ({matches.Count})" : "The only match", bold: true), matchBox,
-            _ink.Label("Album and cover from", bold: true), releaseBox, cover, Buttons(Actions()),
+            _ink.Label("Album and cover from", bold: true), releaseBox, cover, Buttons(ActionsWithLinks()),
             _ink.Label("Information from MusicBrainz. Covers from the Cover Art Archive belong to their owners.", 11, colour: _ink.Sub),
         ]);
         Put([.. shown]);

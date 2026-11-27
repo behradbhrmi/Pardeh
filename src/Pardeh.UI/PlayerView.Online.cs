@@ -15,6 +15,7 @@ internal sealed partial class PlayerView
     internal const string OnlineInfoPrivacy =
         "To look a song up, sends its title and artist to MusicBrainz (if those find nothing, words from the file name, without website text), "
         + "with Pardeh's name, version and project address. That happens when you ask: for one song, or for your library with Check Library Online. "
+        + "Where to get it asks for the links listed for a match. "
         + "Covers come from the Cover Art Archive and the Internet Archive. No folders, files or personal details.";
 
     /// <summary>What the history switch says.</summary>
@@ -186,6 +187,7 @@ internal sealed partial class PlayerView
                 _history?.Flush();
             },
             RememberTyped = result => RememberSearch(result, proposal.Source),
+            WhereToGet = candidate => _ = WhereToGet(new OnlineViews.LinkTarget(candidate.Id, OnlineViews.HistoryText.Pair(candidate.Title, candidate.ArtistText))),
         };
     }
 

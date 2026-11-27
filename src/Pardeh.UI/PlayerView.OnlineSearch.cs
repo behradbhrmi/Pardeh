@@ -42,7 +42,29 @@ internal sealed partial class PlayerView
         FixInfo = FixInfo,
         LookAgain = LookUpAgain,
         OpenPage = OpenWebPage,
+        WhereToGet = target => WhereToGet(target),
     };
+
+    private LinksContext LinksContext() => new()
+    {
+        Allow = AllowOnlineInfo,
+        OpenPage = OpenWebPage,
+        Fetch = async (id, cancel) =>
+        {
+            var links = await Metadata.Provider.LinksAsync(id, cancel);
+            _history?.SetLinks(Metadata.Provider.Name, id, links.Links);
+            return links;
+        },
+    };
+
+    private Task WhereToGet(LinkTarget target, LinkTarget? other = null) =>
+        ShowPanel("Where to get it", close =>
+        {
+            var view = new LinksView(Ink, LinksContext(), target, close, other);
+            // Asked once the screen is there: the consent question belongs on top of it.
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => _ = view.Ask());
+            return view;
+        }, 620, 560);
 
     private async Task ShowLookupHistory()
     {
