@@ -567,7 +567,9 @@ internal static partial class OptionsDialog
                 Toggle("Check the playing song online", PlayerView.CheckPlayingSummary, _settings.FixInfoCheckPlaying, v => { _settings.FixInfoCheckPlaying = v; _settings.Save(); }),
                 Toggle("Keep a history of look-ups", PlayerView.HistorySummary, _settings.KeepLookupHistory, v => { _settings.KeepLookupHistory = v; _settings.Save(); }),
                 Toggle("Take names in the database's script", "Off: a song with Persian names keeps them in Persian, and one with Latin names in Latin",
-                    _settings.FixInfoDatabaseScript, v => { _settings.FixInfoDatabaseScript = v; _settings.Save(); }));
+                    _settings.FixInfoDatabaseScript, v => { _settings.FixInfoDatabaseScript = v; _settings.Save(); }),
+                Section("Downloads"),
+                Toggle("Download from the internet", PlayerView.DownloadPrivacy, _settings.Downloads, v => { _settings.Downloads = v; _settings.Save(); }));
         }
 
         private Control AudioVideoPage()

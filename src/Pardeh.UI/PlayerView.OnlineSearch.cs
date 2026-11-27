@@ -29,6 +29,7 @@ internal sealed partial class PlayerView
     {
         yield return ("Search Online...", () => _ = ShowSearchOnline());
         yield return ("Looked-Up Songs...", () => _ = ShowLookupHistory());
+        yield return (DownloadsHeader(), () => _ = ShowDownloads());
     }
 
     private bool _searching;

@@ -108,6 +108,22 @@ public interface IPlatformServices
             ? HoldingFolder.At(custom)
             : HoldingFolder.ForDesktop(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
+    /// <summary>
+    /// Where downloads go: "Pardeh Downloads" in the user's Music folder. PARDEH_DOWNLOAD_DIR=&lt;folder&gt; is a development
+    /// aid that moves it.
+    /// </summary>
+    Core.Downloads.IDownloadTarget CreateDownloadTarget() => new Core.Downloads.FolderDownloadTarget(DesktopDownloadFolder());
+
+    static string DesktopDownloadFolder()
+    {
+        if (Environment.GetEnvironmentVariable("PARDEH_DOWNLOAD_DIR") is { Length: > 0 } custom)
+            return Path.GetFullPath(custom);
+        var music = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+        if (music.Length == 0)
+            music = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Music");
+        return Path.Combine(music, "Pardeh Downloads");
+    }
+
     IFileAssociationService? FileAssociations => null;
 
     IWmpImportService? WmpImport => null;

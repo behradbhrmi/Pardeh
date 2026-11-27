@@ -12,6 +12,9 @@ namespace Pardeh.Nava;
 /// </summary>
 public static unsafe class AudioDigest
 {
+    /// <summary>Whether FFmpeg is there to read files with.</summary>
+    public static bool IsAvailable => FfmpegLibrary.IsAvailable;
+
     /// <summary>Null when FFmpeg is not there or can't read the file.</summary>
     public static string? Compute(string path) => Scan(path)?.Digest;
 
@@ -31,12 +34,17 @@ public static unsafe class AudioDigest
             if (ffmpeg.avformat_find_stream_info(format, null) < 0)
                 return null;
             var sound = -1;
+            var video = false;
             for (var i = 0; i < (int)format->nb_streams; i++)
             {
                 var stream = format->streams[i];
                 var type = stream->codecpar->codec_type;
                 if (type is AVMediaType.AVMEDIA_TYPE_AUDIO or AVMediaType.AVMEDIA_TYPE_VIDEO && (stream->disposition & ffmpeg.AV_DISPOSITION_ATTACHED_PIC) == 0)
+                {
                     hashes[i] = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                    video |= type == AVMediaType.AVMEDIA_TYPE_VIDEO;
+                }
+
                 if (type == AVMediaType.AVMEDIA_TYPE_AUDIO && sound < 0)
                     sound = i;
             }
@@ -88,7 +96,7 @@ public static unsafe class AudioDigest
             var seconds = sound >= 0 ? ticks * ffmpeg.av_q2d(format->streams[sound]->time_base) : 0;
             // In stream order, not by number: a cover picture added in front moves the numbers.
             var digest = string.Join('-', hashes.Values.Select(h => Convert.ToHexString(h.GetHashAndReset())));
-            return new AudioScan(digest, seconds, declared, codec, lossless, rate);
+            return new AudioScan(digest, seconds, declared, codec, lossless, rate) { HasVideo = video };
         }
         finally
         {

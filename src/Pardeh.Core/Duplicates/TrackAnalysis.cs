@@ -8,6 +8,9 @@ namespace Pardeh.Core.Duplicates;
 /// <param name="DeclaredSeconds">How long the file says it is (0 when it does not say).</param>
 public sealed record AudioScan(string Digest, double Seconds, double DeclaredSeconds, string Codec, bool Lossless, int SampleRate)
 {
+    /// <summary>The file has moving pictures (a cover picture does not count).</summary>
+    public bool HasVideo { get; init; }
+
     /// <summary>Less sound than the file says it has: a download that stopped early.</summary>
     public bool CutShort => Seconds > 0 && DeclaredSeconds > 0 && DeclaredSeconds - Seconds > Math.Max(3, DeclaredSeconds * 0.03);
 }

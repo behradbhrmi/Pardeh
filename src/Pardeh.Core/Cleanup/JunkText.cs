@@ -66,6 +66,11 @@ public static partial class JunkText
     [GeneratedRegex(@"^(?:\S+\s+){1,2}موزیک$|^(?:\S+\s+){0,2}سایت(?:\s+\S+){0,2}\s+موزیک$|^سایت\s+(?:\S+\s+){0,2}موزیک$")]
     private static partial Regex PersianSite();
 
+    // A licence and the page of a freely licensed file are how its maker is credited: removing them could break the licence.
+    [GeneratedRegex(@"https?://(?:www\.)?creativecommons\.org/(?:licenses|publicdomain)/[A-Za-z0-9./\-]*|https://commons\.wikimedia\.org/wiki/File:\S+",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex LicenceAddress();
+
     // The MP3 encoder writes its own address into files it made.
     private static readonly string[] AlwaysKept = ["http://lame.sf.net", "https://lame.sf.net", "lame.sf.net"];
 
@@ -99,7 +104,11 @@ public static partial class JunkText
 
         // What must stay is hidden from every rule, then put back.
         var kept = new List<string>();
-        var work = input;
+        var work = LicenceAddress().Replace(input, match =>
+        {
+            kept.Add(match.Value);
+            return ((char)(0xE000 + kept.Count - 1)).ToString();
+        });
         foreach (var phrase in rules.Keep.Concat(AlwaysKept).Where(p => p.Trim().Length > 0))
         {
             int at;

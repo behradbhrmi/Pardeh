@@ -30,6 +30,8 @@ internal sealed class AndroidPlatformServices : IPlatformServices
         new Pardeh.Core.Changes.LocalFileBackend(Pardeh.Core.Changes.HoldingFolder.At(System.IO.Path.Combine(AppPaths.DataDirectory, "held"))),
     ];
 
+    public Pardeh.Core.Downloads.IDownloadTarget CreateDownloadTarget() => new AndroidDownloadTarget();
+
     public byte[]? VideoThumbnail(string source, int size)
     {
         try

@@ -12,6 +12,15 @@
     <SupportedOSPlatformVersion Condition="$(TargetFramework.EndsWith('-android'))">24.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
+  <!-- "Download from a pasted link" can be left out of a build, for example for a store whose rules it may not meet:
+       -p:PardehLinkDownloads=false. -->
+  <PropertyGroup Condition="'$(PardehLinkDownloads)' != 'false'">
+    <DefineConstants>$(DefineConstants);PARDEH_LINK_DOWNLOADS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(PardehLinkDownloads)' == 'false'">
+    <Compile Remove="Online\PasteLinkPanel.cs" />
+  </ItemGroup>
+
   <!-- The Android SDK's implicit usings clash with Avalonia type names (Application, Button ...). -->
   <ItemGroup Condition="$(TargetFramework.EndsWith('-android'))">
     <Using Remove="Android.App" />

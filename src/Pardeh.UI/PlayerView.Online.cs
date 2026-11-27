@@ -49,6 +49,7 @@ internal sealed partial class PlayerView
     {
         _online = new OnlineStore(Path.Combine(AppPaths.DataDirectory, "fixinfo-online.json"));
         StartLookupHistory();
+        StartDownloads();
         _checker = new SongChecker(Metadata, _online, ReadSong, DatabaseScript) { History = _history };
         _check = new LibraryCheck(_checker, () => AppSettings.Current.FixInfoOnline);
         _playingCheck = new PlayingSongCheck(_checker, () => AppSettings.Current is { FixInfoOnline: true, FixInfoCheckPlaying: true }, PlayingSongDue);
@@ -73,6 +74,7 @@ internal sealed partial class PlayerView
         _check?.Stop();
         _online?.Flush();
         _history?.Flush();
+        StopDownloads();
     }
 
     // A song's tags now and the local checks of it.

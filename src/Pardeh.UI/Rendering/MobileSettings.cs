@@ -1038,6 +1038,8 @@ internal sealed partial class MobileSettingsView : UserControl
                     Toggle("Keep a history of look-ups", PlayerView.HistorySummary, _settings.KeepLookupHistory, v => { _settings.KeepLookupHistory = v; _settings.Save(); }),
                     Toggle("Take names in the database's script", "Off: Persian names stay Persian, and Latin ones Latin", _settings.FixInfoDatabaseScript,
                         v => { _settings.FixInfoDatabaseScript = v; _settings.Save(); })),
+                Heading("Downloads"),
+                Card(Toggle("Download from the internet", PlayerView.DownloadPrivacy, _settings.Downloads, v => { _settings.Downloads = v; _settings.Save(); })),
             },
         };
     }
