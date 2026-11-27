@@ -90,8 +90,7 @@ internal sealed class ReviewView : UserControl
 
         var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions(ink.Narrow ? "*,*,*" : "Auto,*,Auto,Auto"), ColumnSpacing = 8 };
         var ignore = ink.Button("Ignore song", () => done(new ReviewResult(ReviewAnswer.Ignore)));
-        var cancel = ink.Button("Cancel", () => done(new ReviewResult(ReviewAnswer.Cancel)));
-        cancel.IsCancel = true;
+        var cancel = ink.Cancels(ink.Button("Cancel", () => done(new ReviewResult(ReviewAnswer.Cancel))));
         var apply = ink.Button(ink.Narrow ? "Apply" : "Apply selected", () => done(new ReviewResult(ReviewAnswer.Apply, Choice())), primary: true);
         var column = 0;
         foreach (var button in new[] { ignore, cancel, apply })

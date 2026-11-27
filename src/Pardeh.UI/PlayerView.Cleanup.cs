@@ -223,11 +223,7 @@ internal sealed partial class PlayerView
     private async Task<BatchResult> Apply(string description, CleanupPlan plan, ChangeOptions options)
     {
         using var paused = _cleanup!.Pause();
-        var result = await _changes!.ApplyAsync(description, plan.Requests, options);
-        _cleanup.Forget(result.Results.Select(r => r.Source));
-        _cleanupSeen = 0; // the changed files are looked at again
-        _cleanupSoon?.Start();
-        return result;
+        return await _changes!.ApplyAsync(description, plan.Requests, options); // its Changed event has the files looked at again
     }
 
     // ---- Clean Up Library -------------------------------------------------------------------------
@@ -342,7 +338,14 @@ internal sealed partial class PlayerView
             try
             {
                 if (CanFixInfo(item.Path))
-                    samples.Add((await changes.ReadTagsAsync(item.Path), MediaSources.DisplayName(item.Path)));
+                {
+                    var tags = await changes.ReadTagsAsync(item.Path);
+                    // As the song will be once cleaned: that is what a rename uses.
+                    var safe = cleanup.ProposalFor(item.Path)?.Suggestions.Where(s => s.Selected) ?? [];
+                    var change = tags.Differences(CleanupAnalyzer.ToChange(tags, safe, CleanupAnalyzer.HashCover));
+                    var cleaned = tags with { Title = change.Title ?? tags.Title, Artists = change.Artists ?? tags.Artists, Album = change.Album ?? tags.Album };
+                    samples.Add((cleaned, MediaSources.DisplayName(item.Path)));
+                }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TagEditException or NotSupportedException)
             {

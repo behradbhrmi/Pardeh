@@ -23,6 +23,8 @@ internal sealed class PatternView : UserControl
         var rename = ink.Tick("Tick \"Rename the file\" by default", store.RenameFiles);
 
         var saved = new ListBox { MaxHeight = ink.Narrow ? 150 : 130 };
+        if (ink.Narrow)
+            ScrollViewer.SetVerticalScrollBarVisibility(saved, Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden);
         void FillSaved()
         {
             saved.ItemsSource = store.AllPatterns.ToList();
@@ -90,8 +92,7 @@ internal sealed class PatternView : UserControl
             fields.Children.Add(button);
         }
 
-        var cancel = ink.Button("Cancel", close);
-        cancel.IsCancel = true;
+        var cancel = ink.Cancels(ink.Button("Cancel", close));
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, save } };
 
         var content = new StackPanel
@@ -149,8 +150,7 @@ internal sealed class RulesView : UserControl
                 store.SetRules(newJunk, newKeep);
             close();
         }, primary: true);
-        var cancel = ink.Button("Cancel", close);
-        cancel.IsCancel = true;
+        var cancel = ink.Cancels(ink.Button("Cancel", close));
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { cancel, save } };
 
         var content = new StackPanel

@@ -22,11 +22,22 @@ internal sealed record CleanupInk(IBrush Text, IBrush Sub, IBrush Line, IBrush B
         VerticalAlignment = VerticalAlignment.Center,
     };
 
+    /// <summary>Lets Escape press a desktop dialog's Cancel button.</summary>
+    /// <remarks>
+    /// Not on a phone: Android's Back arrives as the Escape key and then as Back, so it would press this and close the screen
+    /// under it too.
+    /// </remarks>
+    public Button Cancels(Button button)
+    {
+        button.IsCancel = !Narrow;
+        return button;
+    }
+
     public Button Button(string text, Action click, bool primary = false)
     {
         var button = new Button
         {
-            Content = text, MinWidth = Narrow ? 0 : 84, MinHeight = Narrow ? 42 : 26, IsDefault = primary,
+            Content = text, MinWidth = Narrow ? 0 : 84, MinHeight = Narrow ? 42 : 26, IsDefault = primary && !Narrow,
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
         };
         button.Click += (_, _) => click();

@@ -60,6 +60,9 @@ internal sealed class BatchView : UserControl
             _ => null,
         });
 
+        if (ink.Narrow)
+            ScrollViewer.SetVerticalScrollBarVisibility(_list, Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden);
+
         _rename = ink.Tick("Rename files too", scanner.Store.RenameFiles);
         _patterns = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = ink.Narrow ? 42 : 24 };
         FillPatterns();
@@ -71,8 +74,7 @@ internal sealed class BatchView : UserControl
         var naming = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8, Children = { _patterns, patternButton } };
         Grid.SetColumn(patternButton, 1);
         _applyButton = ink.Button("Apply", () => _apply(Choices()), primary: true);
-        var closeButton = ink.Button("Close", close);
-        closeButton.IsCancel = true;
+        var closeButton = ink.Cancels(ink.Button("Close", close));
         var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions(ink.Narrow ? "*,2*" : "*,Auto,Auto"), ColumnSpacing = 8, Children = { closeButton, _applyButton } };
         Grid.SetColumn(closeButton, ink.Narrow ? 0 : 1);
         Grid.SetColumn(_applyButton, ink.Narrow ? 1 : 2);
@@ -100,7 +102,7 @@ internal sealed class BatchView : UserControl
     {
         var progress = _scanner.Progress;
         _stopScan.IsVisible = progress.Running;
-        _pending = [.. _scanner.Pending()];
+        _pending = [.. _scanner.Pending().OrderBy(p => p.FileName, StringComparer.CurrentCultureIgnoreCase)];
         var ready = _pending.Where(p => p.Level == CleanupLevel.Ready).ToList();
         var review = _pending.Where(p => p.Level == CleanupLevel.Review).ToList();
         _status.Text = progress.Running ? $"Still looking: {progress.Done} of {progress.Total} songs. What is found so far is below."

@@ -45,8 +45,7 @@ internal sealed partial class PlayerView
             changes.Changed += (_, results) =>
             {
                 _cleanup?.Forget(results.SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
-                _cleanupSeen = 0;
-                _cleanupSoon?.Start();
+                _ = _cleanup?.ScanAsync(); // the library has the new details already
                 _phoneLibrary?.FilesChanged(results);
                 _lyrics.Refresh();
                 _queueStore?.Save();
