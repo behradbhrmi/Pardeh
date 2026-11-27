@@ -40,7 +40,7 @@ public sealed class OnlineViewTests
             return Failure is null ? Found : throw Failure;
         }
 
-        public async Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel)
+        public async Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel, bool small = false)
         {
             Covers++;
             LastCover = cancel;
@@ -100,6 +100,59 @@ public sealed class OnlineViewTests
         Assert.Equal(2, _asked);
         Assert.Equal(0, _database.Searches);
         Assert.Equal(0, _database.Covers);
+    }
+
+    private ReviewView ReviewSaved(OnlineEntry saved, List<LookupResult>? remembered = null)
+    {
+        var local = CleanupAnalyzer.Analyze(new TrackFacts("/m/x.mp3", "x.mp3", Current, null));
+        var steps = MetadataLookup.Steps(Current, local, 200);
+        var context = new OnlineContext(new MetadataLookup(_database), steps, steps[0].Song, () => Task.FromResult(_allow), () => false)
+        {
+            Saved = saved,
+            Remember = result => remembered?.Add(result),
+        };
+        return new ReviewView(CleanupInk.Desktop, local, Current, new CleanupStore(), () => Task.CompletedTask, r => _result = r, context);
+    }
+
+    private static OnlineEntry Saved(params MetadataCandidate[] found) => new()
+    {
+        LookedUp = new DateTime(2026, 3, 4, 0, 0, 0, DateTimeKind.Utc), Song = OnlineData.Song(), Candidates = found,
+        Group = found.Length > 0 ? OnlineGroup.Strong : OnlineGroup.NoMatch,
+    };
+
+    [Fact]
+    public void A_saved_result_is_shown_without_searching_again_and_what_is_taken_from_it_is_reported()
+    {
+        var view = ReviewSaved(Saved(OnlineData.Candidate()));
+
+        Assert.Equal(0, _database.Searches);
+        Assert.Contains("Looked up on", Texts(view));
+        Assert.Equal("Morning Album", Apply(view)[CleanupField.Album].Suggested);
+        Assert.Equal(OnlineData.RecordingId, _result!.Used!.Candidate.Id);
+    }
+
+    [Fact]
+    public void A_saved_no_match_offers_another_look_which_is_remembered()
+    {
+        var remembered = new List<LookupResult>();
+        var view = ReviewSaved(Saved(), remembered);
+        Assert.Contains("No match on MusicBrainz.", Texts(view));
+        Assert.Equal(0, _database.Searches);
+
+        Click(view, "Look up again");
+
+        Assert.Equal(1, _database.Searches);
+        Assert.NotEmpty(Assert.Single(remembered).Matches);
+    }
+
+    [Fact]
+    public void Applying_only_this_devices_fixes_reports_no_match_used()
+    {
+        var view = Review();
+
+        Click(view, "Apply selected");
+
+        Assert.Null(_result!.Used);
     }
 
     [Fact]

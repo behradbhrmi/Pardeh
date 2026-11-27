@@ -736,7 +736,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 path => _session?.Host.RunCommand("editTags", [path]))
             {
                 FixInfo = path => _ = FixInfo(path), CleanUp = () => _ = CleanUpLibrary(), NeedsCleanup = NeedsCleanup, CanFixInfo = CanFixInfo,
-                CleanupCount = () => _marked.Count,
+                CleanupCount = () => _marked.Count, HasOnlineMatch = HasOnlineMatch,
             };
             _phoneLibrary = new Rendering.MobileLibraryView(_player, _library, host, ((Rendering.ISettingsHost)this).PhoneTheme);
             _phoneLibrarySession = _session;
@@ -1095,6 +1095,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         _session = new SkinSession(package, _player, this, _decoder, _preferences)
         {
             Library = _library, Playlists = _playlists, Resources = _wmpResources, Lyrics = _lyricsFeed, NeedsCleanup = NeedsCleanup, CanFixInfo = CanFixInfo,
+            HasOnlineMatch = HasOnlineMatch,
         };
         StartupMarks.Mark("session created");
         _session.Start();
@@ -1539,6 +1540,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     /// <summary>The host window closed (or the app is ending): stop everything.</summary>
     public void Shutdown()
     {
+        StopOnlineInfo();
         _queueTimer?.Stop();
         _queueStore?.Save();
         _player.SaveVideoPosition();

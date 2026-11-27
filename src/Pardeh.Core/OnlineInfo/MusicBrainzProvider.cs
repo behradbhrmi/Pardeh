@@ -72,7 +72,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
         return query.ToString();
     }
 
-    public async Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel)
+    public async Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel, bool small = false)
     {
         var places = new List<string>();
         if (Guid.TryParse(release.GroupId, out var group))
@@ -81,7 +81,7 @@ public sealed class MusicBrainzProvider : IMetadataProvider
             places.Add($"release/{single:D}/front-");
 
         // The large size of either first; some pictures have only the smaller one.
-        foreach (var size in new[] { "1200", "500" })
+        foreach (var size in small ? ["500"] : new[] { "1200", "500" })
         {
             foreach (var place in places)
             {

@@ -13,7 +13,14 @@ namespace Pardeh.UI.CleanupViews;
 /// <param name="Song">The song on this device, for a search typed by hand.</param>
 /// <param name="Allow">Whether the user has agreed to online look-ups; asks when not.</param>
 /// <param name="DatabaseScript">The user's choice to take names in the database's script.</param>
-internal sealed record OnlineContext(MetadataLookup Lookup, IReadOnlyList<LookupStep> Steps, LocalSong Song, Func<Task<bool>> Allow, Func<bool> DatabaseScript);
+internal sealed record OnlineContext(MetadataLookup Lookup, IReadOnlyList<LookupStep> Steps, LocalSong Song, Func<Task<bool>> Allow, Func<bool> DatabaseScript)
+{
+    /// <summary>The saved result of an earlier look-up, shown without asking again. Only given while look-ups are on.</summary>
+    public OnlineEntry? Saved { get; init; }
+
+    /// <summary>Told what a look-up of the song's own details found (not a search typed by hand).</summary>
+    public Action<LookupResult> Remember { get; init; } = _ => { };
+}
 
 /// <summary>
 /// The online part of Fix Info: starting a look-up, the match and why, the other matches and releases, and a search by hand.
@@ -56,6 +63,21 @@ internal sealed class OnlineView : UserControl
         ShowStart();
     }
 
+    /// <summary>The match whose details are among the suggestions on screen, or null.</summary>
+    public OnlineUse? Offered { get; private set; }
+
+    /// <summary>
+    /// Shows the saved result, if there is one. Its cover is then fetched, as for any result on screen. Call it once the
+    /// screen is ready to take suggestions.
+    /// </summary>
+    public void ShowSaved()
+    {
+        if (_context.Saved is not { } saved)
+            return;
+        var looked = "Looked up on " + saved.LookedUp.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture) + ".";
+        ShowResult(new LookupResult(saved.Matches(), saved.Searched), saved.Song, looked);
+    }
+
     /// <summary>Gives up on whatever is being fetched.</summary>
     public void Stop()
     {
@@ -96,7 +118,7 @@ internal sealed class OnlineView : UserControl
     }
 
     /// <summary>Looks the song up, once the user has agreed to online look-ups.</summary>
-    internal Task Look() => Run(() => _context.Lookup.FindAsync(_context.Steps, _search!.Token), Look);
+    internal Task Look() => Run(() => _context.Lookup.FindAsync(_context.Steps, _search!.Token), Look, remember: true);
 
     private async Task Typed()
     {
@@ -132,7 +154,7 @@ internal sealed class OnlineView : UserControl
         }
     }
 
-    private async Task Run(Func<Task<LookupResult>> search, Func<Task> again)
+    private async Task Run(Func<Task<LookupResult>> search, Func<Task> again, bool remember = false)
     {
         if (!await Allowed())
             return;
@@ -147,8 +169,11 @@ internal sealed class OnlineView : UserControl
         try
         {
             var result = await search();
-            if (!mine.IsCancellationRequested)
-                ShowResult(result);
+            if (mine.IsCancellationRequested)
+                return;
+            if (remember)
+                _context.Remember(result);
+            ShowResult(result, _context.Song, null);
         }
         catch (OperationCanceledException)
         {
@@ -206,16 +231,22 @@ internal sealed class OnlineView : UserControl
         return box;
     }
 
-    private void ShowResult(LookupResult result)
+    /// <param name="read">The song as the search read it.</param>
+    /// <param name="saved">For a saved result, when it was looked up; it can then be looked up again.</param>
+    private void ShowResult(LookupResult result, LocalSong read, string? saved)
     {
         var searched = result.Searched is { } search ? _ink.Label(Searched(search), 12, colour: _ink.Sub) : null;
+        Button[] Actions() => saved is null ? [ByHand()] : [_ink.Button("Look up again", () => _ = Look()), ByHand()];
         if (result.Matches.Count == 0)
         {
             var none = new List<Control> { _ink.Label("No match on MusicBrainz.", bold: true), _ink.Label("The fixes made on this device are below.", colour: _ink.Sub) };
+            if (saved is not null)
+                none.Add(_ink.Label(saved, 12, colour: _ink.Sub));
             if (searched is not null)
                 none.Add(searched);
-            none.Add(Buttons(ByHand()));
+            none.Add(Buttons(Actions()));
             Put([.. none]);
+            Offered = null;
             _show(_local);
             return;
         }
@@ -233,8 +264,9 @@ internal sealed class OnlineView : UserControl
         {
             var match = matches[Math.Max(0, matchBox.SelectedIndex)];
             var release = releaseBox.SelectedIndex >= 0 && releaseBox.SelectedIndex < releases.Count ? releases[releaseBox.SelectedIndex] : null;
-            _show(OnlineSuggestions.Merge(_local, _current, match, release, null, _context.DatabaseScript()));
-            _ = FetchCover(match, release, cover);
+            Offered = new OnlineUse(match.Candidate, read);
+            _show(Merged(matches, match, release, null, read));
+            _ = FetchCover(matches, match, release, read, cover);
         }
 
         void ChooseMatch()
@@ -259,19 +291,25 @@ internal sealed class OnlineView : UserControl
         };
 
         var shown = new List<Control> { level, reason };
+        if (saved is not null)
+            shown.Add(_ink.Label(saved, 12, colour: _ink.Sub));
         if (searched is not null)
             shown.Add(searched);
         shown.AddRange(
         [
             _ink.Label(matches.Count > 1 ? $"Other matches ({matches.Count})" : "The only match", bold: true), matchBox,
-            _ink.Label("Album and cover from", bold: true), releaseBox, cover, Buttons(ByHand()),
+            _ink.Label("Album and cover from", bold: true), releaseBox, cover, Buttons(Actions()),
             _ink.Label("Information from MusicBrainz. Covers from the Cover Art Archive belong to their owners.", 11, colour: _ink.Sub),
         ]);
         Put([.. shown]);
         ChooseMatch();
     }
 
-    private async Task FetchCover(MetadataMatch match, MetadataRelease? release, TextBlock status)
+    private CleanupProposal Merged(IReadOnlyList<MetadataMatch> matches, MetadataMatch match, MetadataRelease? release, CoverImage? cover, LocalSong read) =>
+        OnlineSuggestions.Merge(_local, _current, match, release, cover, _context.DatabaseScript(),
+            OnlineJudge.Doubts(_local, _current, read, matches, match, release));
+
+    private async Task FetchCover(IReadOnlyList<MetadataMatch> matches, MetadataMatch match, MetadataRelease? release, LocalSong read, TextBlock status)
     {
         _cover?.Cancel();
         var mine = _cover = new CancellationTokenSource();
@@ -294,7 +332,7 @@ internal sealed class OnlineView : UserControl
                 return;
             status.Text = image is null ? "No cover in the Cover Art Archive for this one." : string.Empty;
             if (image is not null)
-                _showCover(OnlineSuggestions.Merge(_local, _current, match, release, image, _context.DatabaseScript()));
+                _showCover(Merged(matches, match, release, image, read));
         }
         catch (OperationCanceledException)
         {

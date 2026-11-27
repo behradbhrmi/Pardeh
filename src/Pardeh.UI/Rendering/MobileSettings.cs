@@ -1034,6 +1034,7 @@ internal sealed partial class MobileSettingsView : UserControl
                 Heading("Fix Info"),
                 Card(
                     Toggle("Look up song details online (MusicBrainz)", PlayerView.OnlineInfoPrivacy, _settings.FixInfoOnline, v => { _settings.FixInfoOnline = v; _settings.Save(); }),
+                    Toggle("Check the playing song online", PlayerView.CheckPlayingSummary, _settings.FixInfoCheckPlaying, v => { _settings.FixInfoCheckPlaying = v; _settings.Save(); }),
                     Toggle("Take names in the database's script", "Off: Persian names stay Persian, and Latin ones Latin", _settings.FixInfoDatabaseScript,
                         v => { _settings.FixInfoDatabaseScript = v; _settings.Save(); })),
             },

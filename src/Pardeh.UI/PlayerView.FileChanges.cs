@@ -45,6 +45,8 @@ internal sealed partial class PlayerView
             changes.Changed += (_, results) =>
             {
                 _cleanup?.Forget(results.SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
+                // What was found online held for the files as they were.
+                _online?.Forget(results.Where(r => r.Status != ResultStatus.Unchanged).SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
                 _ = _cleanup?.ScanAsync(); // the library has the new details already
                 _phoneLibrary?.FilesChanged(results);
                 _lyrics.Refresh();

@@ -153,6 +153,9 @@ public sealed class SkinSession : IDisposable
     /// <summary>True for a library song with something to clean up: lists mark it. Null: no marks.</summary>
     public Func<string, bool>? NeedsCleanup { get; set; }
 
+    /// <summary>For a marked song: whether the mark is for a match found online.</summary>
+    public Func<string, bool>? HasOnlineMatch { get; set; }
+
     /// <summary>True for a file whose details the host can fix (not a stream). Null: no "Fix Info" entries.</summary>
     public Func<string, bool>? CanFixInfo { get; set; }
 

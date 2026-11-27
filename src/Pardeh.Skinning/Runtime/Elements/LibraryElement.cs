@@ -627,7 +627,9 @@ public sealed class LibraryElement(SkinView view, SkinNode node, SkinElement? pa
     }
 
     public override string? ToolTipAt(double x, double y) =>
-        BadgeAt(x, y) >= 0 ? "Needs cleanup. Click to look at it." : base.ToolTipAt(x, y);
+        BadgeAt(x, y) is not (>= 0 and var marked) ? base.ToolTipAt(x, y)
+        : View.Session.HasOnlineMatch?.Invoke(_tracks[marked].Path) == true ? "Match found online. Click to look at it."
+        : "Needs cleanup. Click to look at it.";
 
     private string RemoveLabel => SelectedNodeKey == "nowplaying" ? "Remove from Now Playing"
         : SelectedNodeKey.StartsWith("playlist:", StringComparison.Ordinal) ? "Remove from Playlist"

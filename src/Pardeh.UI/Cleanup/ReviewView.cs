@@ -15,7 +15,8 @@ internal enum ReviewAnswer
     Ignore,
 }
 
-internal sealed record ReviewResult(ReviewAnswer Answer, CleanupChoice? Choice = null);
+/// <param name="Used">The online match that accepted details come from, or null.</param>
+internal sealed record ReviewResult(ReviewAnswer Answer, CleanupChoice? Choice = null, Core.OnlineInfo.OnlineUse? Used = null);
 
 /// <summary>
 /// Fix Info for one song: every suggestion with its own tick and an editable value, the cover, and the file name. Wide
@@ -44,8 +45,9 @@ internal sealed class ReviewView : UserControl
     /// <param name="current">The file's tags now, with pictures.</param>
     /// <param name="editPatterns">Opens the pattern editor; the list here follows what it saved.</param>
     /// <param name="online">What an online look-up needs, or null to offer none.</param>
+    /// <param name="note">Where the song stands (checked, ignored...), shown under its name, or null.</param>
     public ReviewView(CleanupInk ink, CleanupProposal proposal, TagFields current, CleanupStore store, Func<Task> editPatterns, Action<ReviewResult> done,
-        OnlineContext? online = null)
+        OnlineContext? online = null, string? note = null)
     {
         _ink = ink;
         _proposal = proposal;
@@ -89,6 +91,8 @@ internal sealed class ReviewView : UserControl
             _ => "Please check: what is not certain is left unticked.",
         };
         var header = new StackPanel { Spacing = 2, Children = { ink.Label(proposal.FileName, ink.Narrow ? 15 : 13, bold: true, wrap: false), ink.Label(level, colour: ink.Sub) } };
+        if (note is not null)
+            header.Children.Add(ink.Label(note, colour: ink.Sub));
 
         var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions(ink.Narrow ? "*,*,*" : "Auto,*,Auto,Auto"), ColumnSpacing = 8 };
         var ignore = ink.Button("Ignore song", () => done(new ReviewResult(ReviewAnswer.Ignore)));
@@ -99,7 +103,10 @@ internal sealed class ReviewView : UserControl
             var wrong = Accepted().FirstOrDefault(s => s.Field is CleanupField.Year or CleanupField.Track && !CleanupAnalyzer.TryNumber(s.Suggested, out _));
             _problem!.IsVisible = wrong is not null;
             if (wrong is null)
-                done(new ReviewResult(ReviewAnswer.Apply, Choice()));
+            {
+                var choice = Choice();
+                done(new ReviewResult(ReviewAnswer.Apply, choice, Online?.Offered is { } offered && choice.Accepted.Any(FromOnline) ? offered : null));
+            }
             else
                 _problem.Text = CleanupInk.FieldName(wrong) + " must be a number of at most four digits.";
         }, primary: true);
@@ -125,7 +132,12 @@ internal sealed class ReviewView : UserControl
         page.Children.Add(ink.Scroller(list));
         Content = page;
         Show(proposal);
+        Online?.ShowSaved();
     }
+
+    // The database's value, taken as suggested, pressed, or as its cover.
+    private static bool FromOnline(CleanupSuggestion suggestion) =>
+        suggestion.NewCover is not null || suggestion.Reason == CleanupReason.Online || suggestion.Online is { } online && suggestion.Suggested == online;
 
     /// <summary>Puts these suggestions on screen in place of the ones there; what was typed into those is gone.</summary>
     private void Show(CleanupProposal shown)

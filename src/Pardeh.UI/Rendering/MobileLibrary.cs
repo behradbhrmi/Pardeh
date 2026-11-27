@@ -30,7 +30,10 @@ internal sealed record MobileLibraryHost(
 
     public Func<string, bool> CanFixInfo { get; init; } = _ => false;
 
-    /// <summary>How many songs have something to clean up.</summary>
+    /// <summary>For a marked song: whether the mark is for a match found online.</summary>
+    public Func<string, bool> HasOnlineMatch { get; init; } = _ => false;
+
+    /// <summary>How many songs are marked.</summary>
     public Func<int> CleanupCount { get; init; } = () => 0;
 }
 
@@ -1376,13 +1379,14 @@ internal sealed partial class MobileLibraryView : UserControl
     // The "Needs cleanup" mark: a small amber disc in a target big enough to tap; a tap opens the review.
     private Control CleanupMark(LibraryItem item)
     {
+        var match = _host.HasOnlineMatch(item.Path);
         var disc = new Border
         {
-            Width = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Brush(Color.Parse("#FFB300")),
-            Child = new TextBlock { Text = "!", FontSize = 12, FontWeight = FontWeight.Bold, Foreground = Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            Width = 18, Height = 18, CornerRadius = new CornerRadius(9), Background = Brush(Color.Parse(match ? "#1668D8" : "#FFB300")),
+            Child = new TextBlock { Text = match ? "i" : "!", FontSize = 12, FontWeight = FontWeight.Bold, Foreground = match ? Brushes.White : Brushes.Black, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
         };
         var target = new Border { Width = 40, MinHeight = 44, Background = Brushes.Transparent, Child = disc };
-        ToolTip.SetTip(target, "Needs cleanup");
+        ToolTip.SetTip(target, match ? "Match found online" : "Needs cleanup");
         target.Tapped += (_, e) =>
         {
             e.Handled = true;

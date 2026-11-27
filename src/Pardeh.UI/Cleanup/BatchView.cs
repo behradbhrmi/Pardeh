@@ -34,7 +34,7 @@ internal sealed class BatchView : UserControl
     private List<CleanupProposal> _pending = [];
 
     public BatchView(CleanupInk ink, CleanupScanner scanner, Func<CleanupProposal, Task<ReviewResult>> review, Func<Task> editPatterns, Func<Task> editRules,
-        Action<IReadOnlyList<CleanupChoice>> apply, Action close)
+        Action<IReadOnlyList<CleanupChoice>> apply, Action close, Action? checkOnline = null)
     {
         _ink = ink;
         _scanner = scanner;
@@ -49,6 +49,8 @@ internal sealed class BatchView : UserControl
             Fill();
         });
         var tools = new WrapPanel { Children = { rules, again, _stopScan } };
+        if (checkOnline is not null)
+            tools.Children.Add(ink.Button("Check online...", checkOnline));
         foreach (var child in tools.Children)
             child.Margin = new Thickness(0, 0, 8, 4);
         var top = new StackPanel { Spacing = 6, Children = { _status, tools } };

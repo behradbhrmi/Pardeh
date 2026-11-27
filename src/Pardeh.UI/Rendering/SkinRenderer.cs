@@ -1244,7 +1244,8 @@ internal sealed partial class SkinRenderer
                     var marked = c == 0 && session.NeedsCleanup?.Invoke(track.Path) == true;
                     var inset = marked ? LibraryElement.BadgeWidth : 0;
                     if (marked)
-                        DrawCleanupMark(context, new Point(columns[c].X + 4 + LibraryElement.BadgeWidth / 2 - 1, y + rowH / 2), 5);
+                        DrawCleanupMark(context, new Point(columns[c].X + 4 + LibraryElement.BadgeWidth / 2 - 1, y + rowH / 2), 5,
+                            session.HasOnlineMatch?.Invoke(track.Path) == true);
                     var cell = Text(cells[c], ink, Math.Max(1, columns[c].Width - 8 - inset));
                     var cellX = c == columns.Count - 1 ? columns[c].X + columns[c].Width - cell.Width - 6 : columns[c].X + 4 + inset;
                     context.DrawText(cell, new Point(cellX, y + 1 + (rowH - 15) / 2));
@@ -1297,14 +1298,17 @@ internal sealed partial class SkinRenderer
 
     /// <summary>The library toolbar's small icons (Pardeh's own drawings in the classic style).</summary>
     // The "Needs cleanup" mark: a small amber disc with an exclamation mark, readable on light and dark lists.
-    private static void DrawCleanupMark(DrawingContext context, Point centre, double radius)
+    // An amber "!" for a song to clean up; a blue "i" for one with a match found online.
+    private static void DrawCleanupMark(DrawingContext context, Point centre, double radius, bool match = false)
     {
-        context.DrawEllipse(CleanupMarkFill, null, centre, radius, radius);
-        context.FillRectangle(Brushes.Black, new Rect(centre.X - 1, centre.Y - radius * 0.62, 2, radius * 0.72));
-        context.FillRectangle(Brushes.Black, new Rect(centre.X - 1, centre.Y + radius * 0.34, 2, 2));
+        context.DrawEllipse(match ? MatchMarkFill : CleanupMarkFill, null, centre, radius, radius);
+        var ink = match ? Brushes.White : Brushes.Black;
+        context.FillRectangle(ink, new Rect(centre.X - 1, centre.Y - radius * (match ? 0.1 : 0.62), 2, radius * 0.72));
+        context.FillRectangle(ink, new Rect(centre.X - 1, centre.Y + (match ? -radius * 0.65 : radius * 0.34), 2, 2));
     }
 
     private static readonly IBrush CleanupMarkFill = new SolidColorBrush(Color.Parse("#FFB300"));
+    private static readonly IBrush MatchMarkFill = new SolidColorBrush(Color.Parse("#1668D8"));
 
     private static void DrawLibraryToolIcon(DrawingContext context, string key, Rect r, bool enabled)
     {

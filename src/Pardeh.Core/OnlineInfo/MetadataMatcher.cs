@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Pardeh.Core.Cleanup;
 
@@ -42,7 +43,17 @@ public static partial class MetadataMatcher
         ("remix", "remix"), ("remixed", "remix"), ("mix", "remix"), ("ریمیکس", "remix"), ("live", "live"), ("اجرای زنده", "live"),
         ("instrumental", "instrumental"), ("بی کلام", "instrumental"), ("بیکلام", "instrumental"), ("acoustic", "acoustic"), ("unplugged", "acoustic"),
         ("edit", "edit"), ("remaster", "remaster"), ("remastered", "remaster"), ("karaoke", "karaoke"), ("demo", "demo"),
+        ("rework", "remix"), ("رمیکس", "remix"), ("کنسرت", "live"), ("آکوستیک", "acoustic"), ("extended", "extended"), ("cover", "cover"),
+        ("tribute", "tribute"), ("sped up", "sped up"), ("speed up", "sped up"), ("slowed", "slowed"), ("reverb", "reverb"), ("nightcore", "nightcore"),
+        ("mashup", "mashup"), ("acapella", "a cappella"), ("a cappella", "a cappella"), ("a capella", "a cappella"), ("reprise", "reprise"),
+        ("orchestral", "orchestral"), ("piano version", "piano"),
     ];
+
+    // Many albums have a track of each of these names: the name and artist alone don't say which one it is.
+    private static readonly HashSet<string> CommonTitles = new(StringComparer.Ordinal)
+    {
+        "intro", "outro", "interlude", "skit", "prelude", "overture", "introduction", "bonus track", "مقدمه", "پیش درآمد",
+    };
 
     // Words that make a loose "mix" mean nothing new.
     private static readonly string[] PlainMixes = ["original mix", "album mix", "stereo mix", "mono mix"];
@@ -129,9 +140,33 @@ public static partial class MetadataMatcher
     public static bool WantsLive(LocalSong song) => VersionsOf(song).Contains("live");
 
     // Spaces go too: Persian words are written joined, spaced or with a half-space.
-    private static string Compact(string text) => TextFold.Key(text).Replace(" ", string.Empty);
+    private static string Compact(string text) => TextFold.Key(Plain(text)).Replace(" ", string.Empty);
 
-    private static Likeness Compare(string first, string second)
+    // What people leave out when typing: accents on Latin letters, the marks above and below Arabic ones (آ as ا, أ, ئ), and
+    // "and" written as a sign. Other scripts keep their marks, which make different letters there.
+    private static string Plain(string text)
+    {
+        var parts = text.Replace("&", " and ").Normalize(NormalizationForm.FormD);
+        var plain = new StringBuilder(parts.Length);
+        foreach (var c in parts)
+        {
+            if (c is >= '̀' and <= 'ͯ' or >= 'ً' and <= 'ٟ' or 'ٰ')
+                continue;
+            plain.Append(c switch
+            {
+                'ة' or 'ە' => 'ه',
+                'ٱ' => 'ا',
+                _ => c,
+            });
+        }
+
+        return plain.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    /// <summary>Whether two texts are the same name once case, spacing, punctuation and optional marks are set aside.</summary>
+    public static bool SameName(string? first, string? second) => Compact(first ?? string.Empty) is { Length: > 0 } a && a == Compact(second ?? string.Empty);
+
+    internal static Likeness Compare(string first, string second)
     {
         var a = Compact(first);
         var b = Compact(second);
@@ -204,6 +239,15 @@ public static partial class MetadataMatcher
         return best;
     }
 
+    // A guest doesn't make a recording this one: the recording's first artist must be one of the song's, not counting those
+    // after "feat.". In a plain list ("A, B") there is no telling who leads, so any of them will do.
+    private static bool LeadArtistMatches(LocalSong song, MetadataCandidate candidate)
+    {
+        var wanted = ArtistNames(song.Artists.Select(a => Featured().Replace(a, string.Empty))).Concat(song.Artists).Select(WithoutThe).ToList();
+        var lead = candidate.Artists.Take(1).SelectMany(a => a.OtherNames.Prepend(a.Name)).Prepend(candidate.ArtistText).Select(WithoutThe).ToList();
+        return wanted.Any(one => lead.Any(other => Compare(one, other) == Likeness.Same));
+    }
+
     public static MetadataMatch Match(LocalSong song, MetadataCandidate candidate)
     {
         var (wantedBase, _) = SplitTitle(song.Title);
@@ -219,7 +263,13 @@ public static partial class MetadataMatcher
         var album = Compact(song.Album);
         var sameAlbum = album.Length > 0 && candidate.Releases.Any(r => Compact(r.Title) == album);
 
-        var level = title == Likeness.Same && artist == Likeness.Same && sameVersion && sameLength ? MatchLevel.Strong
+        var agrees = title == Likeness.Same && artist == Likeness.Same && sameVersion && sameLength;
+        var leadArtist = agrees && LeadArtistMatches(song, candidate);
+        // "[unknown]", "[traditional]": the database's words for nobody in particular.
+        var nobody = candidate.ArtistText.StartsWith('[');
+        var commonTitle = CommonTitles.Contains(TextFold.Key(wantedBase)) && !sameAlbum;
+
+        var level = agrees && leadArtist && !nobody && !commonTitle ? MatchLevel.Strong
             : title != Likeness.No && artist != Likeness.No ? MatchLevel.Possible
             : title == Likeness.Same && sameLength ? MatchLevel.Possible
             : MatchLevel.None;
@@ -242,6 +292,11 @@ public static partial class MetadataMatcher
             var ours = wantedVersions.Except(offeredVersions).ToList();
             reasons.Add(theirs.Count > 0 ? "another version (" + string.Join(", ", theirs.Order()) + ")" : "not marked as " + string.Join(", ", ours.Order()));
         }
+
+        if (agrees && !leadArtist)
+            reasons.Add("it is mainly another artist's recording");
+        else if (agrees && commonTitle)
+            reasons.Add("a title this common also needs the same album");
 
         var reason = string.Join(", ", reasons);
         return new MetadataMatch(candidate, level, char.ToUpperInvariant(reason[0]) + reason[1..], title, artist, sameVersion, difference, sameAlbum);

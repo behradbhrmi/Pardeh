@@ -50,7 +50,8 @@ public interface IMetadataProvider
     Task<IReadOnlyList<MetadataCandidate>> SearchAsync(MetadataSearch search, CancellationToken cancel);
 
     /// <summary>The front cover for a release, or null when there is none. Throws <see cref="MetadataException"/> when the service could not be asked.</summary>
-    Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel);
+    /// <param name="small">Only the 500 pixel picture, for many songs at once: less to download and to hold.</param>
+    Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel, bool small = false);
 }
 
 /// <summary>A service that could not be asked. The message is for the user.</summary>

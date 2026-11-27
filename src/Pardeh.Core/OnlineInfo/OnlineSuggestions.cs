@@ -43,8 +43,9 @@ public static class OnlineSuggestions
     /// <param name="release">The release the album, year and cover come from, or null.</param>
     /// <param name="cover">That release's front cover, or null.</param>
     /// <param name="databaseScript">The user's choice to take names in the database's script.</param>
+    /// <param name="doubts">What stays unticked even for a strong match.</param>
     public static CleanupProposal Merge(CleanupProposal local, TagFields current, MetadataMatch match, MetadataRelease? release, CoverImage? cover,
-        bool databaseScript)
+        bool databaseScript, OnlineDoubts doubts = default)
     {
         var strong = match.Level == MatchLevel.Strong;
         var candidate = match.Candidate;
@@ -56,7 +57,7 @@ public static class OnlineSuggestions
             Best(local, CleanupField.Artists, string.Join(Joiner, current.Artists ?? [])),
         });
 
-        void Offer(CleanupField field, string now, string online)
+        void Offer(CleanupField field, string now, string online, bool doubtful = false)
         {
             online = online.Trim();
             var at = merged.FindIndex(s => s.Field == field);
@@ -72,14 +73,14 @@ public static class OnlineSuggestions
                 return;
             var otherScript = field is not (CleanupField.Year or CleanupField.Track) && OtherScript(empty ? own : kept, online);
 
-            if (known is not null && (!strong || otherScript && !databaseScript))
+            if (known is not null && (!strong || doubtful || otherScript && !databaseScript))
             {
                 // The local fix stays; the database's value is there to be chosen.
                 merged[at] = known with { Online = online };
                 return;
             }
 
-            var take = strong && (junk || empty || otherScript && databaseScript) && (!otherScript || databaseScript);
+            var take = strong && !doubtful && (junk || empty || otherScript && databaseScript) && (!otherScript || databaseScript);
             var suggestion = new CleanupSuggestion(field, null, now, online, CleanupReason.Online, take) { Alternative = junk && !empty ? kept : null };
             if (at >= 0)
                 merged[at] = suggestion;
@@ -91,14 +92,14 @@ public static class OnlineSuggestions
         Offer(CleanupField.Artists, string.Join(Joiner, current.Artists ?? []), string.Join(Joiner, candidate.Artists.Select(a => a.Name)));
         if (release is not null)
         {
-            Offer(CleanupField.AlbumArtists, string.Join(Joiner, current.AlbumArtists ?? []), release.AlbumArtist);
-            Offer(CleanupField.Album, current.Album ?? string.Empty, release.Title);
+            Offer(CleanupField.AlbumArtists, string.Join(Joiner, current.AlbumArtists ?? []), release.AlbumArtist, doubts.Album);
+            Offer(CleanupField.Album, current.Album ?? string.Empty, release.Title, doubts.Album);
         }
 
         // The year it first came out, whichever release the user has.
-        Offer(CleanupField.Year, Number(current.Year), Number(candidate.FirstYear is var year && year != 0 ? year : release?.Year));
+        Offer(CleanupField.Year, Number(current.Year), Number(candidate.FirstYear is var year && year != 0 ? year : release?.Year), doubts.Year);
         if (release is not null)
-            Offer(CleanupField.Track, Number(current.Track), Number(release.Track));
+            Offer(CleanupField.Track, Number(current.Track), Number(release.Track), doubts.Album);
 
         if (cover is not null && !(current.Pictures ?? []).Any(p => p.Data.AsSpan().SequenceEqual(cover.Data)))
         {

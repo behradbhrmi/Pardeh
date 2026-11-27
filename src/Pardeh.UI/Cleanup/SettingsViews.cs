@@ -130,7 +130,7 @@ internal sealed class RulesView : UserControl
         };
         var junk = Lines(rules.Junk);
         var keep = Lines(rules.Keep);
-        var badges = ink.Tick("Show \"Needs cleanup\" marks in the library", store.ShowBadges);
+        var badges = ink.Tick("Show \"Needs cleanup\" and \"Match found\" marks in the library", store.ShowBadges);
         var forget = ink.Button($"Stop ignoring all songs ({store.IgnoredCount})", () => { });
         forget.IsEnabled = store.IgnoredCount > 0;
         forget.Click += (_, _) =>

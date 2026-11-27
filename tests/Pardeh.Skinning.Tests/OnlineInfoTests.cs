@@ -397,7 +397,7 @@ public sealed class MetadataLookupTests
             return Task.FromResult(answer(search));
         }
 
-        public Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel) => Task.FromResult<CoverImage?>(null);
+        public Task<CoverImage?> CoverAsync(MetadataRelease release, CancellationToken cancel, bool small = false) => Task.FromResult<CoverImage?>(null);
     }
 
     private static IReadOnlyList<LookupStep> Steps(string file, string title, string artist, double seconds = 200)

@@ -21,6 +21,7 @@ internal sealed partial class PlayerView
     private DispatcherTimer? _cleanupSoon;
     private long _cleanupSeen;
     private HashSet<string> _marked = [];
+    private HashSet<string> _matched = [];
     private bool _fixingInfo;
 
     private void StartCleanup()
@@ -38,6 +39,7 @@ internal sealed partial class PlayerView
             _cleanupSoon.Start();
         });
         _cleanupSoon.Start();
+        StartOnlineInfo();
     }
 
     private void CheckLibrary()
@@ -56,6 +58,7 @@ internal sealed partial class PlayerView
         if (signature == _cleanupSeen)
             return;
         _cleanupSeen = signature;
+        _online?.Keep(_library.Items.Select(i => i.Path).ToHashSet(StringComparer.Ordinal));
         _ = _cleanup.ScanAsync();
     }
 
@@ -64,15 +67,42 @@ internal sealed partial class PlayerView
         if (_cleanup is null)
             return;
         _batchView?.Fill();
-        var marked = _cleanup.Store.ShowBadges ? _cleanup.Pending().Select(p => p.Source).ToHashSet(StringComparer.OrdinalIgnoreCase) : [];
-        if (marked.SetEquals(_marked))
+        _checkView?.Fill();
+        UpdateMarks();
+    }
+
+    // Marks: songs that need cleaning up, and songs with a match found online.
+    private void UpdateMarks()
+    {
+        if (_cleanup is null)
+            return;
+        var marked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (_cleanup.Store.ShowBadges)
+        {
+            // Saved matches show only while look-ups are on: that is when Fix Info shows them.
+            var online = AppSettings.Current.FixInfoOnline;
+            foreach (var item in _library.Items)
+            {
+                var state = StateOf(item.Path, online ? SavedFor(item) : null);
+                if (state is Core.OnlineInfo.FixInfoState.NeedsCleanup or Core.OnlineInfo.FixInfoState.MatchFound)
+                    marked.Add(item.Path);
+                if (state == Core.OnlineInfo.FixInfoState.MatchFound)
+                    matched.Add(item.Path);
+            }
+        }
+
+        if (marked.SetEquals(_marked) && matched.SetEquals(_matched))
             return;
         _marked = marked;
+        _matched = matched;
         _phoneLibrary?.Reload();
         _canvas.InvalidateVisual();
     }
 
     private bool NeedsCleanup(string source) => _marked.Contains(source);
+
+    private bool HasOnlineMatch(string source) => _matched.Contains(source);
 
     private bool CanFixInfo(string source) => _changes?.WhyUnchangeable(source) is null && !MediaLibrary.VideoExtensions.Contains(Path.GetExtension(MediaSources.DisplayName(source)));
 
@@ -140,53 +170,15 @@ internal sealed partial class PlayerView
     {
         var result = new ReviewResult(ReviewAnswer.Cancel);
         ReviewView? view = null;
+        var saved = _library.Find(proposal.Source) is { } item ? SavedFor(item) : null;
+        var state = Core.OnlineInfo.FixInfoStates.Of(_cleanup!.Store.IsIgnored(proposal.Source), proposal, saved);
         await ShowPanel("Fix Info", close => view = new ReviewView(Ink, proposal, current, _cleanup!.Store, EditPatterns, answer =>
         {
             result = answer;
             close();
-        }, OnlineFor(proposal, current)));
+        }, OnlineFor(proposal, current), Core.OnlineInfo.FixInfoStates.Describe(state, saved)));
         view?.Online?.Stop();
         return result;
-    }
-
-    // ---- looking a song up online -----------------------------------------------------------------
-
-    /// <summary>What Pardeh says it sends, wherever it asks or offers the switch.</summary>
-    internal const string OnlineInfoPrivacy =
-        "When you ask for it, sends the song's title and artist to MusicBrainz (if those find nothing, words from the file name, without website text), "
-        + "with Pardeh's name, version and project address. Covers come from the Cover Art Archive and the Internet Archive. No folders, files or personal details.";
-
-    private Core.OnlineInfo.MetadataLookup? _metadata;
-
-    // One for the app: it keeps to MusicBrainz's one request a second, and remembers what it was told.
-    private Core.OnlineInfo.MetadataLookup Metadata => _metadata ??= new Core.OnlineInfo.MetadataLookup(new Core.OnlineInfo.MusicBrainzProvider(
-        new HttpClient(new SocketsHttpHandler
-        {
-            AllowAutoRedirect = false, UseCookies = false, ConnectTimeout = TimeSpan.FromSeconds(8), AutomaticDecompression = System.Net.DecompressionMethods.All,
-        }) { Timeout = Timeout.InfiniteTimeSpan }, // the provider times each request
-        $"Pardeh/{AppInfo.Version} ({AppInfo.SourcePage})"));
-
-    private OnlineContext OnlineFor(CleanupProposal proposal, TagFields current)
-    {
-        var seconds = _library.Items.FirstOrDefault(i => string.Equals(i.Path, proposal.Source, StringComparison.OrdinalIgnoreCase))?.DurationSeconds ?? 0;
-        if (seconds <= 0 && string.Equals(_player.CurrentMedia?.Source, proposal.Source, StringComparison.OrdinalIgnoreCase))
-            seconds = _player.Duration;
-        var steps = Core.OnlineInfo.MetadataLookup.Steps(current, proposal, seconds, _cleanup!.Store.Rules);
-        // The song as the first search sees it; one typed by hand keeps only its length and album.
-        var song = steps.Count > 0 ? steps[0].Song : new Core.OnlineInfo.LocalSong(current.Title ?? string.Empty, current.Artists ?? [], current.Album ?? string.Empty, seconds);
-        return new OnlineContext(Metadata, steps, song, AllowOnlineInfo, () => AppSettings.Current.FixInfoDatabaseScript);
-    }
-
-    private async Task<bool> AllowOnlineInfo()
-    {
-        var settings = AppSettings.Current;
-        if (settings.FixInfoOnline)
-            return true;
-        if (!await ConfirmAsync("Look up songs online?", OnlineInfoPrivacy + (Shell is null ? string.Empty : "\n\nTurn it on?"), "Turn on", "Not now"))
-            return false;
-        settings.FixInfoOnline = true;
-        settings.Save();
-        return true;
     }
 
     // Looks at the song as it is now: the scan's result may be older than the file.
@@ -237,6 +229,8 @@ internal sealed partial class PlayerView
             cleanup.Store.SetIgnored(source, false);
             var name = MediaSources.DisplayName(source);
             var result = await Apply("Fix info: " + name, plan, AskBeforeInterrupting());
+            if (answer.Used is { } used)
+                RememberApplied(source, result, used);
             var failed = result.Results.Where(r => r.Status is not (ResultStatus.Done or ResultStatus.Unchanged)).ToList();
             if (failed.Count > 0)
             {
@@ -265,12 +259,14 @@ internal sealed partial class PlayerView
     private async Task<BatchResult> Apply(string description, CleanupPlan plan, ChangeOptions options)
     {
         using var paused = _cleanup!.Pause();
+        using var held = _check?.Hold();
         return await _changes!.ApplyAsync(description, plan.Requests, options); // its Changed event has the files looked at again
     }
 
     // ---- Clean Up Library -------------------------------------------------------------------------
 
     private BatchView? _batchView;
+    private Dictionary<string, Core.OnlineInfo.OnlineUse> _batchUsed = [];
 
     private async Task CleanUpLibrary()
     {
@@ -278,21 +274,21 @@ internal sealed partial class PlayerView
             return;
         if (!cleanup.Complete && !cleanup.Progress.Running)
             _ = cleanup.ScanAsync();
+        // A review's online choice is remembered once the batch has applied it.
+        var used = new Dictionary<string, Core.OnlineInfo.OnlineUse>(StringComparer.Ordinal);
+        _batchUsed = used;
         await ShowPanel("Clean Up Library", close =>
         {
             BatchView? view = null;
             view = new BatchView(Ink, cleanup, async proposal =>
             {
-                try
-                {
-                    return await Look(proposal.Source) is var (fresh, tags) ? await ReviewSong(fresh, tags) : new ReviewResult(ReviewAnswer.Cancel);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TagEditException or NotSupportedException)
-                {
-                    ShowMessage(ex.Message);
-                    return new ReviewResult(ReviewAnswer.Cancel);
-                }
-            }, EditPatterns, EditRules, choices => _ = ApplyBatch(view!, choices), close);
+                var result = await ReviewFromList(proposal.Source);
+                if (result.Used is { } taken)
+                    used[proposal.Source] = taken;
+                else
+                    used.Remove(proposal.Source);
+                return result;
+            }, EditPatterns, EditRules, choices => _ = ApplyBatch(view!, choices), close, () => _ = CheckLibraryOnline());
             _batchView = view;
             return view;
         });
@@ -325,6 +321,9 @@ internal sealed partial class PlayerView
                 Cancel = stop.Token,
                 Progress = new Progress<(int Done, int Total)>(p => view.ShowBusy("Changing files", p.Done, p.Total, stop.Cancel)),
             });
+            foreach (var choice in choices)
+                if (_batchUsed.TryGetValue(choice.Source, out var taken))
+                    RememberApplied(choice.Source, result, taken);
             await Report(result);
         }
         catch (OperationCanceledException)
@@ -408,7 +407,8 @@ internal sealed partial class PlayerView
             yield break;
         if (_player.CurrentMedia is { } playing && CanFixInfo(playing.Source))
             yield return ("Fix Info for This Song...", () => _ = FixInfo(playing.Source));
-        var waiting = _marked.Count;
+        var waiting = _cleanup.Store.ShowBadges ? _cleanup.Pending().Count : 0;
         yield return (waiting > 0 ? $"Clean Up Library ({waiting})..." : "Clean Up Library...", () => _ = CleanUpLibrary());
+        yield return (CheckLibraryHeader(), () => _ = CheckLibraryOnline());
     }
 }

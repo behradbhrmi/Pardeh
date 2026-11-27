@@ -158,6 +158,9 @@ public sealed class AppSettings
     /// </summary>
     public bool FixInfoOnline { get; set; }
 
+    /// <summary>Also look the playing song up by itself, once. Off by default, and only with <see cref="FixInfoOnline"/>.</summary>
+    public bool FixInfoCheckPlaying { get; set; }
+
     /// <summary>Suggest the database's script for names, for example Latin in place of Persian. Off: what the song uses stays.</summary>
     public bool FixInfoDatabaseScript { get; set; }
 
