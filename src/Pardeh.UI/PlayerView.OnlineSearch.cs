@@ -27,7 +27,32 @@ internal sealed partial class PlayerView
     /// <summary>The search entries of the app and File menus.</summary>
     private IEnumerable<(string Header, Action Run)> OnlineSearchMenuEntries()
     {
+        yield return ("Search Online...", () => _ = ShowSearchOnline());
         yield return ("Looked-Up Songs...", () => _ = ShowLookupHistory());
+    }
+
+    private bool _searching;
+
+    private async Task ShowSearchOnline()
+    {
+        if (_searching)
+            return;
+        _searching = true;
+        try
+        {
+            await ShowPanel("Search Online", close => new SearchOnlineView(Ink, new SearchOnlineContext
+            {
+                Lookup = Metadata,
+                Allow = AllowOnlineInfo,
+                Remember = result => RememberSearch(result, null),
+                WhereToGet = (target, other) => WhereToGet(target, other),
+                OpenPage = OpenWebPage,
+            }, close));
+        }
+        finally
+        {
+            _searching = false;
+        }
     }
 
     private HistoryContext HistoryContext() => new(_history!)
