@@ -24,7 +24,7 @@ public sealed record CleanupPlan(IReadOnlyList<ChangeRequest> Requests, int File
             if (Titles > 0) parts.Add(Count(Titles, "title", "titles"));
             if (Artists > 0) parts.Add(Count(Artists, "artist", "artists"));
             if (Albums > 0) parts.Add(Count(Albums, "album", "albums"));
-            if (Covers > 0) parts.Add(Count(Covers, "cover removed", "covers removed"));
+            if (Covers > 0) parts.Add(Count(Covers, "cover", "covers"));
             if (OtherFields > 0) parts.Add(Count(OtherFields, "other field", "other fields"));
             parts.Add(Count(Renames, "rename", "renames"));
             return $"{Count(Files, "file", "files")}: {string.Join(", ", parts)}";
@@ -65,7 +65,8 @@ public static class CleanupPlanner
                     if (effective.Album is not null) albums++;
                     if (effective.Pictures is not null) covers++;
                     other += (effective.AlbumArtists is null ? 0 : 1) + (effective.Genres is null ? 0 : 1) + (effective.Composers is null ? 0 : 1)
-                        + (effective.Comment is null ? 0 : 1) + (effective.Copyright is null ? 0 : 1) + (effective.Texts?.Length ?? 0);
+                        + (effective.Comment is null ? 0 : 1) + (effective.Copyright is null ? 0 : 1) + (effective.Texts?.Length ?? 0)
+                        + (effective.Year is null ? 0 : 1) + (effective.Track is null ? 0 : 1);
                 }
 
                 if (choice.Pattern is { } pattern && NewName(pattern, current, effective, name) is { } renamed && renamed != name)

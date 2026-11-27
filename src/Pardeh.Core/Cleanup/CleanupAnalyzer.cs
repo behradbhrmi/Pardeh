@@ -22,6 +22,12 @@ public enum CleanupField
     Text,
 
     Cover,
+
+    /// <summary>Suggested only from an online look-up.</summary>
+    Year,
+
+    /// <summary>Suggested only from an online look-up.</summary>
+    Track,
 }
 
 public enum CleanupReason
@@ -40,6 +46,9 @@ public enum CleanupReason
 
     /// <summary>The same picture on songs of many unrelated artists and albums.</summary>
     RepeatedCover,
+
+    /// <summary>What an online database has.</summary>
+    Online,
 }
 
 /// <param name="Current">The value now ("; " between list entries).</param>
@@ -49,6 +58,18 @@ public sealed record CleanupSuggestion(CleanupField Field, string? TextId, strin
 {
     /// <summary>The embedded picture meant (for <see cref="CleanupField.Cover"/>).</summary>
     public string? CoverHash { get; init; }
+
+    /// <summary>
+    /// For <see cref="CleanupField.Cover"/>: a picture to put in as the front cover, in place of the one there (or of the one
+    /// <see cref="CoverHash"/> names). Without it, the named picture is only removed.
+    /// </summary>
+    public TagPicture? NewCover { get; init; }
+
+    /// <summary>An online value that was not taken as the suggestion, offered beside it.</summary>
+    public string? Online { get; init; }
+
+    /// <summary>The local fix that an online suggestion stands in for, offered beside it.</summary>
+    public string? Alternative { get; init; }
 
     /// <summary>Something that only repeats across the library, which a band name or a compilation cover can do too.</summary>
     public bool IsSuspicion => Reason is CleanupReason.Repeated or CleanupReason.RepeatedCover;
@@ -307,7 +328,31 @@ public static class CleanupAnalyzer
                 case CleanupField.Text when s.TextId is { } id && current.TextOf(id) == s.Current:
                     texts.Add(new TagText(id, s.Suggested));
                     break;
-                case CleanupField.Cover when current.Pictures is { } pictures && pictures.Any(p => coverHash(p.Data) == s.CoverHash):
+                case CleanupField.Year when Still(Digits(current.Year)) && TryNumber(value, out var year):
+                    change = change with { Year = year };
+                    break;
+                case CleanupField.Track when Still(Digits(current.Track)) && TryNumber(value, out var number):
+                    change = change with { Track = number };
+                    break;
+                case CleanupField.Cover when s.NewCover is { } added:
+                {
+                    // The new front takes the place of the old front (or the suspected picture); other pictures stay.
+                    var kept = (change.Pictures ?? current.Pictures ?? []).Where(p => s.CoverHash is null || coverHash(p.Data) != s.CoverHash).ToList();
+                    if (s.CoverHash is null && kept.Count > 0)
+                    {
+                        if (kept.RemoveAll(p => p.Type == "FrontCover") == 0)
+                            kept.RemoveAt(0);
+                    }
+                    else
+                    {
+                        kept.RemoveAll(p => p.Type == "FrontCover");
+                    }
+
+                    change = change with { Pictures = [added, .. kept] };
+                    break;
+                }
+
+                case CleanupField.Cover when (change.Pictures ?? current.Pictures) is { } pictures && pictures.Any(p => coverHash(p.Data) == s.CoverHash):
                     // Only the suspected picture goes; a back cover of the user's own stays.
                     change = change with { Pictures = [.. pictures.Where(p => coverHash(p.Data) != s.CoverHash)] };
                     break;
@@ -315,6 +360,17 @@ public static class CleanupAnalyzer
         }
 
         return texts.Count > 0 ? change with { Texts = [.. texts] } : change;
+    }
+
+    /// <summary>A year or track number as a suggestion shows it: empty for none.</summary>
+    public static string Digits(uint? value) => value is > 0 ? value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+
+    /// <summary>Reads a year or track number; empty clears it (0). Persian digits count.</summary>
+    public static bool TryNumber(string text, out uint number)
+    {
+        number = 0;
+        var folded = TextFold.SameLength(text.Trim());
+        return folded.Length == 0 || folded.Length <= 4 && uint.TryParse(folded, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out number);
     }
 
     public static string HashCover(byte[] data) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(data));
