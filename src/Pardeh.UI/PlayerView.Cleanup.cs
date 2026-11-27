@@ -40,6 +40,7 @@ internal sealed partial class PlayerView
         });
         _cleanupSoon.Start();
         StartOnlineInfo();
+        StartDuplicates();
     }
 
     private void CheckLibrary()
@@ -411,5 +412,7 @@ internal sealed partial class PlayerView
         var waiting = _cleanup.Store.ShowBadges ? _cleanup.Pending().Count : 0;
         yield return (waiting > 0 ? $"Clean Up Library ({waiting})..." : "Clean Up Library...", () => _ = CleanUpLibrary());
         yield return (CheckLibraryHeader(), () => _ = CheckLibraryOnline());
+        foreach (var entry in DuplicateMenuEntries())
+            yield return entry;
     }
 }

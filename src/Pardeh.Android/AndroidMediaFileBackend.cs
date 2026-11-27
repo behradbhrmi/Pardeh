@@ -160,6 +160,18 @@ internal sealed class AndroidMediaFileBackend : IFileBackend
         return result;
     }
 
+    public async Task<IReadOnlyCollection<TrashedFile>> PrepareUntrashAsync(IReadOnlyList<TrashedFile> files)
+    {
+        if (!OperatingSystem.IsAndroidVersionAtLeast(30) || MainActivity.Current is not { } activity)
+            return [];
+        var waiting = files.Where(f => f.Token.Length > 0 && !File.Exists(f.OriginalSource)).ToList();
+        if (waiting.Count < 2)
+            return [];
+        // A file that has left the trash for good makes this throw: the caller then asks about each by itself.
+        var request = MediaStore.CreateTrashRequest(AppContext.ContentResolver!, waiting.Select(f => AndroidUri.Parse(f.Token)!).ToList<AndroidUri>(), false);
+        return await activity.AgreeAsync(request) ? [] : waiting;
+    }
+
     public async Task<string> UntrashAsync(TrashedFile trashed)
     {
         if (File.Exists(trashed.OriginalSource))

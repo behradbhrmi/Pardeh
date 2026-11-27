@@ -88,6 +88,13 @@ public interface IFileBackend
     /// </summary>
     Task<string> UntrashAsync(TrashedFile trashed) => throw new NotSupportedException("There is no system trash here.");
 
+    /// <summary>
+    /// Where the system asks before bringing files back: asks once for all of them, ahead of <see cref="UntrashAsync"/>,
+    /// which then finds them back. Returns those the user refused. Doing nothing is fine.
+    /// </summary>
+    Task<IReadOnlyCollection<TrashedFile>> PrepareUntrashAsync(IReadOnlyList<TrashedFile> files) =>
+        Task.FromResult<IReadOnlyCollection<TrashedFile>>([]);
+
     /// <summary>Moves a file into the holding folder.</summary>
     HeldFile Hold(string source, string id);
 

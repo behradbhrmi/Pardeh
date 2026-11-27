@@ -90,6 +90,9 @@ public sealed class JournalItem
     public string? OldHash { get; set; }
     public string? NewHash { get; set; }
 
+    /// <summary>For the removal of an extra copy: the copy that stays, which the removed one's history goes to.</summary>
+    public KeptCopy? Keep { get; set; }
+
     /// <summary>What pointed at the file before the change.</summary>
     public ReferenceSnapshot? Before { get; set; }
 
@@ -115,6 +118,10 @@ public sealed class JournalItem
     public bool MayInterrupt { get; set; }
 
     public bool Undone { get; set; }
+
+    /// <summary>The checks on the copy to keep held this removal back.</summary>
+    [JsonIgnore]
+    public bool Refused { get; set; }
 }
 
 public sealed class JournalBatch

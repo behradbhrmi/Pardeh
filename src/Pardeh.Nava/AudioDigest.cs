@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using FFmpeg.AutoGen;
+using Pardeh.Core.Duplicates;
 using Pardeh.Ffmpeg;
 
 namespace Pardeh.Nava;
@@ -12,7 +13,11 @@ namespace Pardeh.Nava;
 public static unsafe class AudioDigest
 {
     /// <summary>Null when FFmpeg is not there or can't read the file.</summary>
-    public static string? Compute(string path)
+    public static string? Compute(string path) => Scan(path)?.Digest;
+
+    /// <summary>Reads the whole file, or only its first packets, and says what its sound is. Null when it can't be read.</summary>
+    /// <param name="maxPackets">Stop after this many packets (0: read everything). The digest then covers only those.</param>
+    public static AudioScan? Scan(string path, int maxPackets = 0, CancellationToken cancel = default)
     {
         if (!FfmpegLibrary.IsAvailable)
             return null;
@@ -25,17 +30,37 @@ public static unsafe class AudioDigest
         {
             if (ffmpeg.avformat_find_stream_info(format, null) < 0)
                 return null;
+            var sound = -1;
             for (var i = 0; i < (int)format->nb_streams; i++)
             {
                 var stream = format->streams[i];
                 var type = stream->codecpar->codec_type;
                 if (type is AVMediaType.AVMEDIA_TYPE_AUDIO or AVMediaType.AVMEDIA_TYPE_VIDEO && (stream->disposition & ffmpeg.AV_DISPOSITION_ATTACHED_PIC) == 0)
                     hashes[i] = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                if (type == AVMediaType.AVMEDIA_TYPE_AUDIO && sound < 0)
+                    sound = i;
             }
 
             if (hashes.Count == 0)
                 return null;
+            var codec = string.Empty;
+            var lossless = false;
+            var rate = 0;
+            var declared = 0.0;
+            if (sound >= 0)
+            {
+                var stream = format->streams[sound];
+                var id = stream->codecpar->codec_id;
+                codec = ffmpeg.avcodec_get_name(id);
+                var about = ffmpeg.avcodec_descriptor_get(id);
+                lossless = about != null && (about->props & ffmpeg.AV_CODEC_PROP_LOSSLESS) != 0 && (about->props & ffmpeg.AV_CODEC_PROP_LOSSY) == 0;
+                rate = stream->codecpar->sample_rate;
+                declared = stream->duration > 0 ? stream->duration * ffmpeg.av_q2d(stream->time_base)
+                    : format->duration > 0 ? format->duration / (double)ffmpeg.AV_TIME_BASE : 0;
+            }
+
             var packets = 0L;
+            var ticks = 0L;
             int result;
             while ((result = ffmpeg.av_read_frame(format, packet)) >= 0)
             {
@@ -43,15 +68,27 @@ public static unsafe class AudioDigest
                 {
                     hash.AppendData(new ReadOnlySpan<byte>(packet->data, packet->size));
                     packets++;
+                    if (packet->stream_index == sound && packet->duration > 0)
+                        ticks += packet->duration;
                 }
 
                 ffmpeg.av_packet_unref(packet);
+                if (maxPackets > 0 && packets >= maxPackets)
+                {
+                    result = ffmpeg.AVERROR_EOF;
+                    break;
+                }
+
+                if ((packets & 1023) == 0)
+                    cancel.ThrowIfCancellationRequested();
             }
 
             if (result != ffmpeg.AVERROR_EOF || packets == 0)
                 return null;
+            var seconds = sound >= 0 ? ticks * ffmpeg.av_q2d(format->streams[sound]->time_base) : 0;
             // In stream order, not by number: a cover picture added in front moves the numbers.
-            return string.Join('-', hashes.Values.Select(h => Convert.ToHexString(h.GetHashAndReset())));
+            var digest = string.Join('-', hashes.Values.Select(h => Convert.ToHexString(h.GetHashAndReset())));
+            return new AudioScan(digest, seconds, declared, codec, lossless, rate);
         }
         finally
         {

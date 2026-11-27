@@ -131,7 +131,7 @@ internal static class FfmpegTool
         return File.ReadAllBytes(path);
     }
 
-    private static void Run(params string[] arguments)
+    public static void Run(params string[] arguments)
     {
         var (exe, dlls) = Tool ?? throw new InvalidOperationException("ffmpeg not available");
         var start = new ProcessStartInfo(exe) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true, CreateNoWindow = true };

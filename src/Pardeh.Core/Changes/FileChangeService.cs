@@ -1,13 +1,40 @@
+using Pardeh.Core.Duplicates;
 using Pardeh.Core.Library;
 using Pardeh.Core.LyricsKit;
 
 namespace Pardeh.Core.Changes;
+
+/// <summary>A file as it was when something was decided about it.</summary>
+public sealed record FileStamp(long Size, DateTime ModifiedUtc)
+{
+    /// <summary>Whether the file still looks like that. Some sources keep times only to the second or two.</summary>
+    public bool Matches(FileStat now) => now.Size == Size && Math.Abs((now.ModifiedUtc - ModifiedUtc).TotalSeconds) <= 2;
+}
+
+/// <summary>The copy that stays when another copy of the same song is removed.</summary>
+public sealed record KeptCopy(string Source)
+{
+    /// <summary>The kept file as it was looked at, or null not to check.</summary>
+    public FileStamp? Kept { get; init; }
+
+    /// <summary>The file to remove as it was looked at, or null not to check.</summary>
+    public FileStamp? Removed { get; init; }
+
+    /// <summary>Other ways the library lists the file that is removed. Those that are gone with it are dealt with too.</summary>
+    public IReadOnlyList<string> Aliases { get; init; } = [];
+}
 
 /// <summary>One change to one file.</summary>
 public sealed record ChangeRequest(string Source, ChangeKind Kind)
 {
     public TagFields? Tags { get; init; }
     public string? NewName { get; init; }
+
+    /// <summary>
+    /// Set on the removal of an extra copy of a song: the copy that stays. Before removing, the service makes sure that the
+    /// kept copy is there and is another file; afterwards what the app knew about the removed one goes to it.
+    /// </summary>
+    public KeptCopy? Keep { get; init; }
 
     public static ChangeRequest EditTags(string source, TagFields tags) => new(source, ChangeKind.Tags) { Tags = tags };
 
@@ -37,7 +64,11 @@ public enum ResultStatus
 /// <param name="Source">The file as it was asked for.</param>
 /// <param name="NewSource">Where it is now (null: removed, or nothing happened).</param>
 /// <param name="Message">Why it failed, or something the user should know.</param>
-public sealed record ChangeResult(string Source, ChangeKind Kind, ResultStatus Status, string? NewSource = null, string? Message = null);
+public sealed record ChangeResult(string Source, ChangeKind Kind, ResultStatus Status, string? NewSource = null, string? Message = null)
+{
+    /// <summary>The checks on the copy to keep held this removal back: nothing may be forced.</summary>
+    public bool Refused { get; init; }
+}
 
 /// <param name="BatchId">Null when there was nothing to write down.</param>
 public sealed record BatchResult(string? BatchId, IReadOnlyList<ChangeResult> Results, bool CanUndo)
@@ -123,9 +154,92 @@ public sealed class FileChangeService(
 
     public JournalBatch? LastUndoable() => journal.LastUndoable();
 
+    /// <summary>The files waiting in the holding folders.</summary>
+    public IReadOnlyList<HeldFile> ListHeld() => [.. backends.SelectMany(b => b.ListHeld()).DistinctBy(h => h.HeldSource).OrderBy(h => h.HeldUtc)];
+
+    /// <summary>
+    /// Brings one held file back. When the journal still has its removal, that one change is undone, so playlists and history
+    /// come back with it; otherwise the file alone is restored and the library finds it at its next scan.
+    /// </summary>
+    public async Task<ChangeResult> RestoreHeldAsync(HeldFile held, ChangeOptions? options = null)
+    {
+        foreach (var id in journal.Ids)
+        {
+            if (journal.Load(id) is not { CanUndo: true } batch)
+                continue;
+            if (batch.Items.FirstOrDefault(i => i is { State: ItemState.Done, Undone: false, Kind: ChangeKind.Hold } && i.Held?.Id == held.Id) is { } item)
+                return (await UndoAsync(id, options, new HashSet<int> { item.Index })).Results[0];
+        }
+
+        await _one.WaitAsync();
+        try
+        {
+            using var noScans = await library.SuspendScansAsync();
+            var backend = backends.First(b => b.ListHeld().Any(h => h.HeldSource == held.HeldSource));
+            var restored = await Task.Run(() => backend.RestoreHeld(held));
+            _ = library.ScanAsync();
+            var result = new ChangeResult(held.OriginalSource, ChangeKind.RestoreHeld, ResultStatus.Done, restored);
+            Changed?.Invoke(this, [result]);
+            return result;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or NotSupportedException)
+        {
+            return new ChangeResult(held.OriginalSource, ChangeKind.RestoreHeld, ResultStatus.Failed, null, ex.Message);
+        }
+        finally
+        {
+            _one.Release();
+        }
+    }
+
+    /// <summary>Deletes held files for good. Returns why for those that could not be deleted.</summary>
+    public async Task<IReadOnlyList<string>> DeleteHeldAsync(IReadOnlyList<HeldFile> files)
+    {
+        await _one.WaitAsync();
+        try
+        {
+            return await Task.Run(() =>
+            {
+                var problems = new List<string>();
+                foreach (var held in files)
+                {
+                    try
+                    {
+                        var backend = backends.FirstOrDefault(b => b.ListHeld().Any(h => h.HeldSource == held.HeldSource))
+                            ?? throw new IOException("It is no longer in the holding folder.");
+                        backend.DeleteHeld(held);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+                    {
+                        problems.Add($"{held.Name}: {ex.Message}");
+                    }
+                }
+
+                return problems;
+            });
+        }
+        finally
+        {
+            _one.Release();
+        }
+    }
+
     /// <summary>Null when the file can be changed, else the reason to show.</summary>
     public string? WhyUnchangeable(string source) =>
         BackendFor(source) is { } backend ? backend.WhyUnchangeable(source) : "This kind of source can't be changed.";
+
+    /// <summary>The file as it is now, or null when it is missing or of a kind that can't be changed.</summary>
+    public FileStat? Stat(string source)
+    {
+        try
+        {
+            return BackendFor(source)?.Stat(source);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>The tags a file has now, for an editor to start from. Reads a copy, so any source works.</summary>
     public Task<TagFields> ReadTagsAsync(string source)
@@ -157,17 +271,19 @@ public sealed class FileChangeService(
             Source = r.Source,
             Change = r.Tags,
             NewName = r.NewName,
+            Keep = r.Keep,
         }).ToList();
         return RunAsync(description, items, null, options ?? new ChangeOptions());
     }
 
-    public Task<BatchResult> UndoAsync(string batchId, ChangeOptions? options = null)
+    /// <param name="only">Undo just these items of the batch (by <see cref="JournalItem.Index"/>); null: all of it.</param>
+    public Task<BatchResult> UndoAsync(string batchId, ChangeOptions? options = null, IReadOnlySet<int>? only = null)
     {
         if (journal.Load(batchId) is not { CanUndo: true } batch)
             return Task.FromResult(new BatchResult(null, [], false));
 
         var undo = new List<JournalItem>();
-        foreach (var done in batch.Items.Where(i => i.State == ItemState.Done && !i.Undone).Reverse())
+        foreach (var done in batch.Items.Where(i => i.State == ItemState.Done && !i.Undone && only?.Contains(i.Index) != false).Reverse())
         {
             var item = done.Kind switch
             {
@@ -222,9 +338,12 @@ public sealed class FileChangeService(
             Preflight(batch, refused);
             await RequestAccessAsync(batch, refused);
             await AskAboutPlaybackAsync(batch, refused, options);
-            await TrashAsync(batch, undone);
+            // Extra copies go last: the copy that stays is given its details first, and only if that works are they removed.
+            var trashLast = batch.Items.Any(i => i.Keep is not null);
+            if (!trashLast)
+                await TrashAsync(batch, undone);
 
-            var waiting = batch.Items.Where(i => i.State == ItemState.Pending).ToList();
+            var waiting = batch.Items.Where(i => i.State == ItemState.Pending && i.Kind != ChangeKind.Trash).ToList();
             for (var n = 0; n < waiting.Count; n++)
             {
                 var item = waiting[n];
@@ -241,6 +360,14 @@ public sealed class FileChangeService(
 
             options.Progress?.Report((waiting.Count, waiting.Count));
 
+            if (trashLast)
+            {
+                if (options.Cancel.IsCancellationRequested)
+                    foreach (var item in batch.Items.Where(i => i.State == ItemState.Pending))
+                        Skip(batch, item, refused, ResultStatus.Cancelled, "Stopped before this file.");
+                await TrashAsync(batch, undone);
+            }
+
             batch.Finished = true;
             journal.Save(batch);
             journal.Prune();
@@ -255,7 +382,7 @@ public sealed class FileChangeService(
                     _ => ResultStatus.Failed, // "Changed" too: the file changed but the library could not follow (retried at the next start)
                 },
                 item.State is ItemState.Done or ItemState.Changed ? item.NewSource : null,
-                item.Message)).ToList();
+                item.Message) { Refused = item.Refused }).ToList();
             Changed?.Invoke(this, results);
             return new BatchResult(batch.Id, results, batch.CanUndo);
         }
@@ -284,7 +411,60 @@ public sealed class FileChangeService(
             else if (ChangesAFile(item.Kind) && !ComesLater(batch, item) && backend.WhyUnchangeable(item.Source) is { } why)
                 Skip(batch, item, refused, ResultStatus.Failed, why);
         }
+
+        // At least one copy stays: no batch may remove what another of its removals counts on keeping.
+        var removals = batch.Items.Where(i => i.State == ItemState.Pending && Removes(i.Kind)).ToList();
+        var circular = removals.Where(i => i.Keep is { } keep && removals.Any(r => IsOneFile(r.Source, keep.Source))).ToList();
+        foreach (var item in circular)
+        {
+            item.Refused = true;
+            Skip(batch, item, refused, ResultStatus.Failed, "The copy to keep is being removed too.");
+        }
     }
+
+    private static bool Removes(ChangeKind kind) => kind is ChangeKind.Hold or ChangeKind.Trash or ChangeKind.Delete;
+
+    private static bool IsOneFile(string first, string second) =>
+        PhysicalFiles.SameRoute(first, second) || PhysicalFiles.IdOf(first) is { } id && id == PhysicalFiles.IdOf(second);
+
+    // Asked right before an extra copy is removed. Null when it may go.
+    private string? WhyNotRemovable(JournalBatch batch, JournalItem item)
+    {
+        var why = CheckKeptCopy(batch, item);
+        item.Refused = why is not null;
+        return why;
+    }
+
+    private string? CheckKeptCopy(JournalBatch batch, JournalItem item)
+    {
+        if (item.Keep is not { } keep)
+            return null;
+        var earlier = batch.Items.Take(item.Index).Where(i => !Removes(i.Kind) && (i.Source == keep.Source || i.ExpectedSource == keep.Source)).ToList();
+        if (earlier.Any(i => i.State is not (ItemState.Done or ItemState.Unchanged)))
+            return "The copy to keep could not be updated, so nothing was removed.";
+        if (BackendFor(keep.Source) is not { } keeper || keeper.Stat(keep.Source) is not { Size: > 0 } kept)
+            return "The copy to keep is missing.";
+        if (keep.Kept is { } was && !earlier.Any(i => i.State == ItemState.Done) && !was.Matches(kept))
+            return "The copy to keep has changed since the check. Check again.";
+        if (Required(item.Source).Stat(item.Source) is not { } removed)
+            return "The file is missing.";
+        if (keep.Removed is { } seen && !seen.Matches(removed))
+            return "This file has changed since the check. Check again.";
+        try
+        {
+            using var readable = keeper.OpenRead(keep.Source);
+            if (readable.ReadByte() < 0)
+                return "The copy to keep is empty.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return "The copy to keep can't be read. " + ex.Message;
+        }
+
+        return PhysicalFiles.WhyNotDistinct(item.Source, keep.Source);
+    }
+
+    private bool KeptCopyIsThere(JournalItem item) => item.Keep is not { } keep || Required(keep.Source).Stat(keep.Source) is not null;
 
     // An earlier item of the batch gives this one its file (an undo renaming back, then restoring tags).
     private static bool ComesLater(JournalBatch batch, JournalItem item) =>
@@ -311,6 +491,24 @@ public sealed class FileChangeService(
 
             foreach (var item in group.Where(i => denied.Contains(i.Source)))
                 Skip(batch, item, refused, ResultStatus.Denied, "Permission to change the file was not given.");
+        }
+
+        // Several files to bring back from a system trash are asked about together.
+        var trashed = batch.Items.Where(i => i is { State: ItemState.Pending, Kind: ChangeKind.Untrash, Trashed: not null }).GroupBy(i => Required(i.Source));
+        foreach (var group in trashed.Where(g => g.Count() > 1).ToList())
+        {
+            IReadOnlyCollection<TrashedFile> no;
+            try
+            {
+                no = await group.Key.PrepareUntrashAsync([.. group.Select(i => i.Trashed!)]);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                continue; // each is then asked about by itself
+            }
+
+            foreach (var item in group.Where(i => no.Contains(i.Trashed!)))
+                Skip(batch, item, refused, ResultStatus.Denied, "Permission to restore the file was not given.");
         }
     }
 
@@ -363,8 +561,11 @@ public sealed class FileChangeService(
                     holds.Add((item, hold));
                     try
                     {
+                        if (WhyNotRemovable(batch, item) is { } why)
+                            throw new IOException(why);
                         item.Before = references.Capture(item.Source);
-                        item.Plan = references.PlanRemove(item.Source);
+                        // An extra copy's plan is made once it has gone: what it gives the kept copy adds to what others gave.
+                        item.Plan = item.Keep is null ? references.PlanRemove(item.Source) : null;
                         item.State = ItemState.Started;
                         journal.Save(batch, item);
                         ready.Add(item);
@@ -401,6 +602,8 @@ public sealed class FileChangeService(
                     item.Trashed = trashed;
                     item.State = ItemState.Changed;
                     journal.Save(batch, item);
+                    if (!KeptCopyIsThere(item))
+                        AddMessage(item, "The copy to keep is gone as well: look for the file in the trash.");
                     TryRelink(batch, item);
                     Finish(batch, item, undone);
                 }
@@ -408,7 +611,7 @@ public sealed class FileChangeService(
             finally
             {
                 foreach (var (item, hold) in holds)
-                    hold?.Resume(item.State is ItemState.Changed or ItemState.Done ? null : item.Source);
+                    hold?.Resume(After(item));
             }
         }
     }
@@ -436,9 +639,15 @@ public sealed class FileChangeService(
         }
         finally
         {
-            hold?.Resume(item.State is ItemState.Changed or ItemState.Done ? item.NewSource : item.Source);
+            hold?.Resume(After(item));
         }
     }
+
+    // What playback goes on with once a released file has been dealt with: for a removed extra copy, the one that stayed.
+    private static string? After(JournalItem item) =>
+        item.State is not (ItemState.Changed or ItemState.Done) ? item.Source
+        : Removes(item.Kind) ? item.Keep?.Source
+        : item.NewSource;
 
     private void Fail(JournalBatch batch, JournalItem item, string message)
     {
@@ -507,17 +716,27 @@ public sealed class FileChangeService(
                 ExecuteRename(batch, item, backend);
                 break;
             case ChangeKind.Hold:
+                if (WhyNotRemovable(batch, item) is { } stays)
+                    throw new IOException(stays);
                 item.Before = references.Capture(item.Source);
-                item.Plan = references.PlanRemove(item.Source);
+                item.Plan = item.Keep is null ? references.PlanRemove(item.Source) : null;
                 Started(batch, item);
                 item.Held = backend.Hold(item.Source, IdOf(batch, item));
+                if (!KeptCopyIsThere(item))
+                {
+                    backend.RestoreHeld(item.Held);
+                    throw new IOException("The copy to keep went with it, so they were one file. It was put back.");
+                }
+
                 MarkChanged(batch, item, null);
                 break;
             case ChangeKind.Delete:
                 if (backend.Stat(item.Source) is null)
                     throw new IOException("The file is missing.");
+                if (WhyNotRemovable(batch, item) is { } remains)
+                    throw new IOException(remains);
                 item.Before = references.Capture(item.Source);
-                item.Plan = references.PlanRemove(item.Source);
+                item.Plan = item.Keep is null ? references.PlanRemove(item.Source) : null;
                 Started(batch, item);
                 backend.DeletePermanently(item.Source);
                 MarkChanged(batch, item, null);
@@ -764,7 +983,28 @@ public sealed class FileChangeService(
             }
 
             case ChangeKind.Hold or ChangeKind.Trash or ChangeKind.Delete:
-                references.ApplyRemove(item.Source, item.Plan!);
+                if (item.Keep is { } keep && Required(keep.Source).Stat(keep.Source) is not null)
+                {
+                    if (item.Plan?.Merge is null)
+                    {
+                        var gone = keep.Aliases.Where(a => !PhysicalFiles.SameRoute(a, keep.Source) && (BackendFor(a)?.Stat(a) is null));
+                        item.Plan = references.PlanMerge([item.Source, .. gone], before, keep.Source);
+                        journal.Save(batch, item);
+                    }
+
+                    references.ApplyMerge(item.Source, before, item.Plan);
+                }
+                else
+                {
+                    if (item.Plan is null)
+                    {
+                        item.Plan = references.PlanRemove(item.Source);
+                        journal.Save(batch, item);
+                    }
+
+                    references.ApplyRemove(item.Source, item.Plan);
+                }
+
                 break;
             default:
             {

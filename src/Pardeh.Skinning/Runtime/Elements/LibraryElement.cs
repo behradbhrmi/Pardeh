@@ -565,8 +565,18 @@ public sealed class LibraryElement(SkinView view, SkinNode node, SkinElement? pa
         var fixable = View.Session.CanFixInfo?.Invoke(_tracks[index].Path) == true;
         if (fixable)
             items.Add("Fix Info...");
+        var path = _tracks[index].Path;
+        var findAt = View.Session.CanFindCopies?.Invoke(path) == true ? items.Count : -1;
+        if (findAt >= 0)
+            items.Add("Find Copies and Similar...");
         View.Session.Host.ShowPopup(View, items, -1, choice =>
         {
+            if (choice >= 0 && choice == findAt)
+            {
+                View.Session.Host.RunCommand("findCopies", [path]);
+                return;
+            }
+
             switch (choice)
             {
                 case 0: PlayFrom(SelectedTrack); break;

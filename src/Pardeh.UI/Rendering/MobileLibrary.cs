@@ -30,6 +30,11 @@ internal sealed record MobileLibraryHost(
 
     public Func<string, bool> CanFixInfo { get; init; } = _ => false;
 
+    /// <summary>"Find copies and similar" of a song.</summary>
+    public Action<string> FindCopies { get; init; } = _ => { };
+
+    public Func<string, bool> CanFindCopies { get; init; } = _ => false;
+
     /// <summary>For a marked song: whether the mark is for a match found online.</summary>
     public Func<string, bool> HasOnlineMatch { get; init; } = _ => false;
 
@@ -196,7 +201,7 @@ internal sealed partial class MobileLibraryView : UserControl
         {
             Background = _t.Glass ? _t.BodyBrush : Brush(_t.Card), CornerRadius = new CornerRadius(16, 16, 0, 0), VerticalAlignment = VerticalAlignment.Bottom, MaxHeight = 460,
             BorderBrush = _t.Glass ? Brush(_t.G("#7DB7FB")) : null, BorderThickness = new Thickness(_t.Glass ? 1.4 : 0),
-            Child = new DockPanel { Children = { sheetTitle, new ScrollViewer { Content = _sheetRows, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = _t.Glass ? Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto } } },
+            Child = new DockPanel { Children = { sheetTitle, new ScrollViewer { Content = _sheetRows, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = _t.Glass || OperatingSystem.IsAndroid() ? Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto } } },
         };
         DockPanel.SetDock(sheetTitle, Dock.Top);
         _sheetPanel = panel;
@@ -1464,7 +1469,7 @@ internal sealed partial class MobileLibraryView : UserControl
         "Play" => "@player",
         "Play next" => "@playnext",
         "Add to queue" => "@queue",
-        "Add to playlist..." => "@list",
+        "Add to playlist..." or "Find copies and similar..." => "@list",
         "Edit info..." or "Fix info..." => "@pencil",
         "Add to favourites" => "@heartoff",
         "Remove from favourites" => "@heart",
@@ -1487,6 +1492,7 @@ internal sealed partial class MobileLibraryView : UserControl
         ("Add to playlist...", () => PlaylistPicker(item)),
         (IsFavorite(item.Path) ? "Remove from favourites" : "Add to favourites", () => ToggleFavorite(item)),
         ("Edit info...", () => _host.EditTags(item.Path)),
+        .. _host.CanFindCopies(item.Path) ? new (string, Action)[] { ("Find copies and similar...", () => _host.FindCopies(item.Path)) } : [],
         ("Remove from library", () => { _library.Remove([item.Path]); Render(_scroll.Offset.Y); }),
     ]);
 

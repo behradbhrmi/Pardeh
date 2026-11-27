@@ -88,6 +88,35 @@ public sealed class PlaylistStore(string folder)
         }
     }
 
+    /// <summary>
+    /// Gives lines that were repointed at <paramref name="from"/> their own entry back, only at their recorded places: a
+    /// playlist may list <paramref name="from"/> elsewhere in its own right. A line that has moved since is found by counting,
+    /// and nothing changes when it has been put back already. Safe to run twice.
+    /// </summary>
+    public void PointBack(IEnumerable<PlaylistLine> entries, string from, string to)
+    {
+        foreach (var playlist in entries.GroupBy(e => e.Playlist))
+        {
+            var lines = ReadLines(playlist.Key);
+            var wanted = playlist.Count() - lines.Count(l => IsEntry(l, to));
+            var changed = false;
+            foreach (var entry in playlist.OrderBy(e => e.Line))
+            {
+                if (wanted <= 0)
+                    break;
+                var at = entry.Line < lines.Count && IsEntry(lines[entry.Line], from) ? entry.Line : lines.FindIndex(l => IsEntry(l, from));
+                if (at < 0)
+                    continue;
+                lines[at] = to;
+                changed = true;
+                wanted--;
+            }
+
+            if (changed)
+                WriteLines(playlist.Key, lines);
+        }
+    }
+
     /// <summary>Takes the given entries out. Safe to run twice.</summary>
     public void RemoveEntries(IEnumerable<PlaylistLine> entries, string source)
     {

@@ -471,6 +471,55 @@ public sealed class LyricsStore
         }
     }
 
+    /// <summary>
+    /// Undoes a copying <see cref="Transfer"/>: takes from <paramref name="to"/> the pieces still equal to those of
+    /// <paramref name="from"/>. What has been changed since stays. Safe to run twice.
+    /// </summary>
+    public void Withdraw(LyricsTrackKey from, LyricsTrackKey to, LyricsPieces pieces)
+    {
+        lock (_gate)
+        {
+            if (pieces == LyricsPieces.None || from.Hash == to.Hash || !Index.TryGetValue(from.Hash, out var source) || !Index.TryGetValue(to.Hash, out var target))
+                return;
+            var dropped = new List<string>();
+
+            bool Same(string? first, string? second, string folder)
+            {
+                if (first is null || second is null)
+                    return false;
+                var a = Path.Combine(folder, first);
+                var b = Path.Combine(folder, second);
+                try
+                {
+                    if (!File.Exists(a) || !File.Exists(b) || !File.ReadAllBytes(a).AsSpan().SequenceEqual(File.ReadAllBytes(b)))
+                        return false;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    return false;
+                }
+
+                dropped.Add(b);
+                return true;
+            }
+
+            if (pieces.HasFlag(LyricsPieces.Own) && Same(source.OverrideFile, target.OverrideFile, _folder))
+                target.OverrideFile = null;
+            if (pieces.HasFlag(LyricsPieces.Fetched) && Same(source.FetchedFile, target.FetchedFile, OnlineFolder))
+                (target.FetchedFile, target.Provider, target.FetchedUtc) = (null, null, null);
+            if (pieces.HasFlag(LyricsPieces.Chords) && Same(source.ChordsFile, target.ChordsFile, _folder))
+                target.ChordsFile = null;
+            if (pieces.HasFlag(LyricsPieces.Offset) && target.OffsetMs == source.OffsetMs)
+                target.OffsetMs = 0;
+            if (pieces.HasFlag(LyricsPieces.Transpose) && target.Transpose == source.Transpose)
+                target.Transpose = 0;
+            Tidy(to);
+            SaveIndex();
+            foreach (var file in dropped)
+                DeleteFile(file);
+        }
+    }
+
     // --- offsets and "not found" marks -----------------------------------------------------------------------------------------
 
     public int GetOffset(LyricsTrackKey key)

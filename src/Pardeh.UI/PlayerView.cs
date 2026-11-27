@@ -737,6 +737,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             {
                 FixInfo = path => _ = FixInfo(path), CleanUp = () => _ = CleanUpLibrary(), NeedsCleanup = NeedsCleanup, CanFixInfo = CanFixInfo,
                 CleanupCount = () => _marked.Count, HasOnlineMatch = HasOnlineMatch,
+                FindCopies = path => _ = FindCopies(path), CanFindCopies = CanFindCopies,
             };
             _phoneLibrary = new Rendering.MobileLibraryView(_player, _library, host, ((Rendering.ISettingsHost)this).PhoneTheme);
             _phoneLibrarySession = _session;
@@ -1095,7 +1096,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         _session = new SkinSession(package, _player, this, _decoder, _preferences)
         {
             Library = _library, Playlists = _playlists, Resources = _wmpResources, Lyrics = _lyricsFeed, NeedsCleanup = NeedsCleanup, CanFixInfo = CanFixInfo,
-            HasOnlineMatch = HasOnlineMatch,
+            HasOnlineMatch = HasOnlineMatch, CanFindCopies = CanFindCopies,
         };
         StartupMarks.Mark("session created");
         _session.Start();
@@ -1541,6 +1542,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     public void Shutdown()
     {
         StopOnlineInfo();
+        StopDuplicates();
         _queueTimer?.Stop();
         _queueStore?.Save();
         _player.SaveVideoPosition();
@@ -2001,6 +2003,10 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             case "fixinfo":
                 var fixPath = Arg(0);
                 Dispatcher.UIThread.Post(() => _ = FixInfo(fixPath));
+                return null;
+            case "findcopies":
+                var copiesOf = Arg(0);
+                Dispatcher.UIThread.Post(() => _ = FindCopies(copiesOf));
                 return null;
             case "edittags":
                 var tagPath = Arg(0);

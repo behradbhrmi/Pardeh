@@ -311,8 +311,10 @@ public sealed class MediaLibrary
 
     /// <summary>
     /// Folds the same file seen through several routes (a real path, the media store, a document-tree URI) into one entry.
-    /// Same <see cref="MediaSources.IdentityKey"/> means the same file; otherwise, when one of the two is a content URI, equal
-    /// size, duration, title, artist and album do. A real path wins over a content URI; ratings and play history are kept.
+    /// Same <see cref="MediaSources.IdentityKey"/> means the same file; otherwise, when the file behind one of the two is
+    /// unknown (another provider's content URI), equal size, duration, title, artist and album do. Two routes that are known to
+    /// lead to different files stay apart: they are real copies. A real path wins over a content URI; ratings and play
+    /// history are kept.
     /// Does nothing when no identity hook is installed (Windows).
     /// </summary>
     public static List<LibraryItem> Deduplicate(List<LibraryItem> items)
@@ -335,7 +337,7 @@ public sealed class MediaLibrary
                 at = sameKey;
             }
             else if (signature is not null && bySignature.TryGetValue(signature, out var sameTags)
-                && (MediaSources.IsContent(item.Path) || MediaSources.IsContent(result[sameTags].Path)))
+                && (identity(item.Path) is null || identity(result[sameTags].Path) is null))
             {
                 at = sameTags;
             }
@@ -371,6 +373,11 @@ public sealed class MediaLibrary
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    // Android keeps a trashed file, and one still being written, next to the others under such a name. Its media store
+    // leaves them out; a walk through a folder has to do that itself.
+    private static bool IsSetAside(string name) =>
+        name.StartsWith(".trashed-", StringComparison.Ordinal) || name.StartsWith(".pending-", StringComparison.Ordinal);
+
     private IEnumerable<SourceFile> EnumerateMedia(CancellationToken cancel)
     {
         // Snapshots: the UI thread may add or remove while a scan runs.
@@ -387,7 +394,7 @@ public sealed class MediaLibrary
                 {
                     cancel.ThrowIfCancellationRequested();
                     var extension = Path.GetExtension(found.DisplayName);
-                    if (!removed.Contains(found.Path) && (AudioExtensions.Contains(extension) || VideoExtensions.Contains(extension)) && seen.Add(found.Path))
+                    if (!removed.Contains(found.Path) && !IsSetAside(found.DisplayName) && (AudioExtensions.Contains(extension) || VideoExtensions.Contains(extension)) && seen.Add(found.Path))
                         yield return found;
                 }
 
@@ -400,7 +407,7 @@ public sealed class MediaLibrary
             {
                 cancel.ThrowIfCancellationRequested();
                 var extension = Path.GetExtension(file);
-                if (!removed.Contains(file) && (AudioExtensions.Contains(extension) || VideoExtensions.Contains(extension)) && seen.Add(file))
+                if (!removed.Contains(file) && !IsSetAside(Path.GetFileName(file)) && (AudioExtensions.Contains(extension) || VideoExtensions.Contains(extension)) && seen.Add(file))
                 {
                     var info = new FileInfo(file);
                     yield return new SourceFile(file, info.Length, info.LastWriteTimeUtc, info.Name);
@@ -540,7 +547,23 @@ public sealed class MediaLibrary
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Lists items hidden by <see cref="Remove"/> again (the next scan finds them).</summary>
+    public void Unhide(IEnumerable<string> paths, IEnumerable<string>? singleFiles = null)
+    {
+        _removed.ExceptWith(paths);
+        if (singleFiles is not null)
+            _files.UnionWith(singleFiles);
+        SaveSettings();
+    }
+
+    /// <summary>True for a file added by itself rather than found in a watched folder.</summary>
+    public bool IsAddedFile(string path) => _files.Contains(path);
+
     // ---- Ratings, play history, folder watching -------------------------------------------------
+
+    /// <summary>Sets rating, play count and last played together (an extra copy's history joining another's).</summary>
+    public void SetHistory(string path, int rating, int playCount, DateTime lastPlayed) =>
+        Update(path, item => item with { Rating = Math.Clamp(rating, 0, 5), PlayCount = Math.Max(0, playCount), LastPlayed = lastPlayed });
 
     /// <summary>Sets a star rating (0 – 5).</summary>
     public void SetRating(string path, int stars) => Update(path, item => item with { Rating = Math.Clamp(stars, 0, 5) });

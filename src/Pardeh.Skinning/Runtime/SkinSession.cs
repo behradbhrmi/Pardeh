@@ -159,6 +159,9 @@ public sealed class SkinSession : IDisposable
     /// <summary>True for a file whose details the host can fix (not a stream). Null: no "Fix Info" entries.</summary>
     public Func<string, bool>? CanFixInfo { get; set; }
 
+    /// <summary>True for a library song whose copies and similar songs the host can list. Null: no such entries.</summary>
+    public Func<string, bool>? CanFindCopies { get; set; }
+
     /// <summary>The lyrics of the playing track for LYRICS elements, when the host has them (the phone looks).</summary>
     public ILyricsFeed? Lyrics { get; set; }
 

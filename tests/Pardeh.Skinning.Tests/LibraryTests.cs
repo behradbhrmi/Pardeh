@@ -169,6 +169,14 @@ public sealed class LibraryTests : IDisposable
 
             Assert.Equal(["/storage/emulated/0/Music/a.wav", "/storage/emulated/0/Music/b.wav", "/storage/emulated/0/Music/c.wav"], result.Select(i => i.Path));
             Assert.Equal(4, result[0].Rating); // user data of the dropped copy survives
+
+            // Two files of a picked folder with the same bytes and tags are two files: their paths say so.
+            var copies = new List<LibraryItem>
+            {
+                Item("content://x/tree/primary%3AMusic/document/primary%3AMusic%2Fone.wav", "A"),
+                Item("content://x/tree/primary%3AMusic/document/primary%3AMusic%2Ftwo.wav", "A"),
+            };
+            Assert.Equal(2, MediaLibrary.Deduplicate(copies).Count);
         }
         finally
         {

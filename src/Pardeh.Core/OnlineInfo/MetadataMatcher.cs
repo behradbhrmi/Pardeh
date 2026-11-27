@@ -105,7 +105,8 @@ public static partial class MetadataMatcher
         return (rest.Length > 0 ? rest : title.Trim(), versions);
     }
 
-    private static HashSet<string> VersionsIn(string text)
+    /// <summary>The kinds of version a text names ("remix", "live" and so on).</summary>
+    internal static HashSet<string> VersionsIn(string text)
     {
         var key = " " + TextFold.Key(text) + " ";
         foreach (var plain in PlainMixes)
@@ -140,7 +141,20 @@ public static partial class MetadataMatcher
     public static bool WantsLive(LocalSong song) => VersionsOf(song).Contains("live");
 
     // Spaces go too: Persian words are written joined, spaced or with a half-space.
-    private static string Compact(string text) => TextFold.Key(Plain(text)).Replace(" ", string.Empty);
+    internal static string Compact(string text) => TextFold.Key(Plain(text)).Replace(" ", string.Empty);
+
+    internal static bool IsCommonTitle(string title) => CommonTitles.Contains(TextFold.Key(title));
+
+    /// <summary>The single names in one artist field.</summary>
+    internal static IEnumerable<string> SplitArtists(string field) => ArtistBreaks().Split(field).Select(p => p.Trim()).Where(p => p.Length > 0);
+
+    /// <summary>The bracketed and dashed parts of a title that name a version, compacted ("djsomeoneremix").</summary>
+    internal static string VersionText(string title)
+    {
+        var parts = Bracketed().Matches(title).Select(m => m.Groups[1].Value).ToList();
+        parts.AddRange(Bracketed().Replace(title, " ").Split(" - ", StringSplitOptions.TrimEntries).Skip(1));
+        return string.Join('|', parts.Where(p => !Featured().IsMatch(p) && !PlainMixes.Contains(TextFold.Key(p)) && VersionsIn(p).Count > 0).Select(Compact).Order(StringComparer.Ordinal));
+    }
 
     // What people leave out when typing: accents on Latin letters, the marks above and below Arabic ones (آ as ا, أ, ئ), and
     // "and" written as a sign. Other scripts keep their marks, which make different letters there.

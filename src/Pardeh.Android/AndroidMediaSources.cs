@@ -3,6 +3,7 @@ using Android.Database;
 using Android.OS;
 using Android.Provider;
 using Microsoft.Win32.SafeHandles;
+using Pardeh.Core.Duplicates;
 using Pardeh.Core.Library;
 using AndroidUri = Android.Net.Uri;
 
@@ -26,6 +27,26 @@ internal sealed class AndroidMediaSources : ILibrarySourceProvider
         MediaSources.PersistAccess = Persist;
         MediaSources.IdentityKey = IdentityKey;
         MediaSources.SiblingResolver = Siblings;
+        PhysicalFiles.PlatformId = FileId;
+    }
+
+    /// <summary>
+    /// The device and file numbers behind a source, which are the same by every route to one file. A document of the
+    /// phone's own storage is asked about by its real path, so that it compares with "Device music"; a document of any other
+    /// provider (a cloud, another app) may be anything, so it is unknown and never removed as a copy.
+    /// </summary>
+    private static string? FileId(string source)
+    {
+        if (IdentityKey(source) is not { } path || MediaSources.IsContent(path))
+            return null;
+        try
+        {
+            return global::Android.Systems.Os.Stat(path) is { StIno: not 0 } about ? $"{about.StDev:x}:{about.StIno:x}" : null;
+        }
+        catch (global::Android.Systems.ErrnoException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

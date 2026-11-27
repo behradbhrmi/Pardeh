@@ -26,6 +26,7 @@ internal sealed partial class PlayerView
             var references = new LibraryReferences(_library, new TagMediaInfoReader())
             {
                 Cleanup = _cleanup!.Store,
+                Duplicates = _duplicates!.Store,
                 Lyrics = _lyrics.Service.Store,
                 LyricsChanged = item => _lyrics.Service.Invalidate(item),
                 Playlists = _playlists,
@@ -48,6 +49,8 @@ internal sealed partial class PlayerView
                 // What was found online held for the files as they were.
                 _online?.Forget(results.Where(r => r.Status != ResultStatus.Unchanged).SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
                 _ = _cleanup?.ScanAsync(); // the library has the new details already
+                _duplicates?.Forget(results.Where(r => r.Status != ResultStatus.Unchanged).SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
+                RefreshDuplicates(now: true);
                 _phoneLibrary?.FilesChanged(results);
                 _lyrics.Refresh();
                 _queueStore?.Save();

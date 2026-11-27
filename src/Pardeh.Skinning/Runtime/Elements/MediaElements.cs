@@ -393,13 +393,16 @@ public sealed class PlaylistElement(SkinView view, SkinNode node, SkinElement? p
         View.Invalidate();
     }
 
-    /// <summary>Touch: long press on an item = Play, Add to / Remove from favourites, Remove, Move Up, Move Down.</summary>
+    /// <summary>
+    /// Long press or right-click on an item: Play, Add to / Remove from favourites, Remove, Move Up, Move Down, and for a
+    /// file of the library, what can be done with the song.
+    /// </summary>
     public override bool OnContextMenu(double x, double y)
     {
         var player = View.Session.Player;
         var list = player.CurrentPlaylist;
         var index = IndexAt(y);
-        if (!Touch || index < 0 || index >= list.Count || JumpAt(x, y) >= 0)
+        if (index < 0 || index >= list.Count || JumpAt(x, y) >= 0)
             return false;
         SelectedIndex = index;
         View.Invalidate();
@@ -407,8 +410,12 @@ public sealed class PlaylistElement(SkinView view, SkinNode node, SkinElement? p
         var favorite = player.IsFavorite(item);
         List<string> items = ["Play", favorite ? "Remove from favourites" : "Add to favourites", "Remove from list", "Move up", "Move down"];
         // Only files can be fixed, not streams.
-        if (View.Session.CanFixInfo?.Invoke(item.Source) == true)
+        var fixAt = View.Session.CanFixInfo?.Invoke(item.Source) == true ? items.Count : -1;
+        if (fixAt >= 0)
             items.Add("Fix Info...");
+        var findAt = View.Session.CanFindCopies?.Invoke(item.Source) == true ? items.Count : -1;
+        if (findAt >= 0)
+            items.Add("Find Copies and Similar...");
         View.Session.Host.ShowPopup(View, items, -1, choice =>
         {
             switch (choice)
@@ -418,7 +425,8 @@ public sealed class PlaylistElement(SkinView view, SkinNode node, SkinElement? p
                 case 2: list.RemoveAt(index); SelectedIndex = -1; break;
                 case 3 when index > 0: list.Move(index, index - 1); SelectedIndex = index - 1; break;
                 case 4 when index < list.Count - 1: list.Move(index, index + 1); SelectedIndex = index + 1; break;
-                case 5: View.Session.Host.RunCommand("fixInfo", [item.Source]); break;
+                case >= 0 when choice == fixAt: View.Session.Host.RunCommand("fixInfo", [item.Source]); break;
+                case >= 0 when choice == findAt: View.Session.Host.RunCommand("findCopies", [item.Source]); break;
             }
 
             View.Invalidate();

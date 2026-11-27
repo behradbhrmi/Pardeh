@@ -172,6 +172,25 @@ sliders. The Pardeh logo can follow the colour too.
     itself, once. Nothing is changed.
 - A blue mark shows a song with a match found online, an amber one a song that needs cleaning up.
 
+### Duplicates
+
+- **Find Duplicates** (in the app menu) reads your songs on your device; nothing is sent anywhere. It starts only when
+  you press Check, can be paused or stopped, and goes on where it was. On a phone it waits while the app is in the
+  background.
+- It keeps three kinds apart: **identical files**, the **same audio with different details**, and **probably the same
+  recording** (same title, artists and version, length within 2 seconds). Remixes, live takes, instrumentals and other
+  versions are never counted as duplicates. "Probably" is decided by names and length, not by listening.
+- For each group you can keep one copy and take details or the cover from the others, remove the others, hide them from
+  the library, or say they are not duplicates. A suggestion comes with its reason, and there is none when it is unclear.
+  A higher stated bitrate is no proof of better sound.
+- **Keep the best of each** works only on groups with the same audio, and shows every file it would keep and remove first.
+- One copy always stays. One file reached two ways (overlapping folders, links) is never treated as two copies, and a file
+  that can't be shown to be a separate one is not removed.
+- Removed files go to the Recycle Bin or the system trash. Where there is none, they go to a "Pardeh Removed" folder,
+  listed under **Removed Files**, which is only emptied when you say so. Playlists, ratings and play counts move to the
+  copy you keep, and you can undo. On Windows, restore files from the Recycle Bin first, then choose Undo.
+- **Find Copies and Similar**, in a song's menu, lists its copies, other versions and songs with close names, saying why.
+
 ### Lyrics, chords and tabs
 
 - Timed or plain lyrics from tags, from files next to the song, or typed in yourself, with right-to-left text.
