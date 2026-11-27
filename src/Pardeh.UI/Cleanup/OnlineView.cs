@@ -165,6 +165,10 @@ internal sealed class OnlineView : UserControl
     private static string Length(int milliseconds) =>
         milliseconds > 0 ? TimeSpan.FromMilliseconds(milliseconds).ToString(@"m\:ss", CultureInfo.InvariantCulture) : "?:??";
 
+    // The invisible left-to-right mark keeps the parts in order when some are Persian: without it the numbers after a
+    // Persian name are laid out before it.
+    private const string Dot = "‎ · ";
+
     private static string Describe(MetadataMatch match)
     {
         var candidate = match.Candidate;
@@ -173,7 +177,7 @@ internal sealed class OnlineView : UserControl
             parts.Add(year.ToString(CultureInfo.InvariantCulture));
         if (candidate.Disambiguation.Length > 0)
             parts.Add(candidate.Disambiguation);
-        return string.Join(" · ", parts);
+        return string.Join(Dot, parts);
     }
 
     private static string Describe(MetadataRelease release)
@@ -186,7 +190,7 @@ internal sealed class OnlineView : UserControl
             parts.Add(kind);
         if (!release.Official)
             parts.Add("not official");
-        return string.Join(" · ", parts);
+        return string.Join(Dot, parts);
     }
 
     private ComboBox Choice(IEnumerable<string> items) => new()
