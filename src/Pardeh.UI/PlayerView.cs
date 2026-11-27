@@ -270,7 +270,8 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         // Development aid: PARDEH_ADD_FOLDER=<path> adds a library folder (for tests on a device).
         if (Environment.GetEnvironmentVariable("PARDEH_ADD_FOLDER") is { Length: > 0 } devFolder && Directory.Exists(devFolder))
             _library.AddFolder(devFolder);
-        RestoreDesktopLyrics();        StartupMarks.Mark("PlayerView.Start end (full mode loaded)");
+        RestoreDesktopLyrics();
+        StartupMarks.Mark("PlayerView.Start end (full mode loaded)");
         _lastTick = _clock.Elapsed;
         _timer.Start();
     }
