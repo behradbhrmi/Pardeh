@@ -58,14 +58,23 @@ public static partial class JunkText
     private static partial Regex DownloadSong();
 
     // Parts of a text: separators and brackets stand on their own.
-    [GeneratedRegex(@"(\s+[\-–—]+\s+|\s*\|+\s*|\s*::\s*|\s*~+\s*|\s+[•·]\s+|\s*//+(?=\s)|[\[\(\{【«]|[\]\)\}】»])")]
+    [GeneratedRegex(@"(\s+[\-–—]+\s+|\s*\|+\s*|\s*::\s*|\s*~+\s*|\s*[♫♪]+\s*|\s+[•·]\s+|\s*//+(?=\s)|[\[\(\{【«]|[\]\)\}】»])")]
     private static partial Regex Delimiter();
+
+    // Matched against the folded text of a part set apart by separators or brackets: a Persian music site's name, such as
+    // "<name> music" or "<name> music site". Persian puts "music" last in such names.
+    [GeneratedRegex(@"^(?:\S+\s+){1,2}موزیک$|^(?:\S+\s+){0,2}سایت(?:\s+\S+){0,2}\s+موزیک$|^سایت\s+(?:\S+\s+){0,2}موزیک$")]
+    private static partial Regex PersianSite();
+
+    // The MP3 encoder writes its own address into files it made.
+    private static readonly string[] AlwaysKept = ["http://lame.sf.net", "https://lame.sf.net", "lame.sf.net"];
 
     private static readonly HashSet<string> PromoWords = new(StringComparer.Ordinal)
     {
         "download", "downloaded", "from", "new", "exclusive", "official", "site", "website", "free", "music", "song", "by", "visit", "at", "the", "join",
         "us", "telegram", "channel", "instagram", "page", "mp3", "www", "kbps", "quality", "hq", "full", "track", "uploaded", "more", "for", "on", "our",
         "دانلود", "آهنگ", "اهنگ", "موزیک", "جدید", "سایت", "کانال", "تلگرام", "رسانه", "از", "با", "کیفیت", "عالی", "اصلی", "اختصاصی", "ترانه", "رایگان", "وب", "اینستاگرام", "پیج",
+        "converted", "ripped", "in",
     };
 
     // Words that only make sense pointing at a site. Without one of these, "Song" next to an address is the song's name.
@@ -91,7 +100,7 @@ public static partial class JunkText
         // What must stay is hidden from every rule, then put back.
         var kept = new List<string>();
         var work = input;
-        foreach (var phrase in rules.Keep.Where(p => p.Trim().Length > 0))
+        foreach (var phrase in rules.Keep.Concat(AlwaysKept).Where(p => p.Trim().Length > 0))
         {
             int at;
             while ((at = IndexOf(work, phrase.Trim())) >= 0)
@@ -115,6 +124,15 @@ public static partial class JunkText
         for (var i = 0; i < parts.Count; i += 2)
         {
             var bracketed = i > 0 && i + 1 < parts.Count && Is(parts[i - 1], Openers) && Is(parts[i + 1], Closers);
+            // Only a part that something sets apart: in brackets, after a separator, or between music notes.
+            var apart = bracketed || i > 0 && IsSeparator(parts[i - 1]) || i + 1 < parts.Count && parts[i + 1].Trim() is ['♫' or '♪', ..];
+            if (apart && PersianSite().IsMatch(TextFold.Key(parts[i])))
+            {
+                found.Add(parts[i].Trim());
+                parts[i] = string.Empty;
+                continue;
+            }
+
             parts[i] = CleanPart(parts[i], bracketed, isLast: i == parts.Count - 1 && i > 0, found);
         }
 
@@ -187,7 +205,7 @@ public static partial class JunkText
     [GeneratedRegex(@"\s{2,}")]
     private static partial Regex Spaces();
 
-    private static readonly char[] Loose = [' ', '-', '–', '—', '|', '~', ':', '•', '·', '_', ',', ';', '/', '+', '=', '.', '\t'];
+    private static readonly char[] Loose = [' ', '-', '–', '—', '|', '~', ':', '•', '·', '_', ',', ';', '/', '+', '=', '.', '\t', '♫', '♪'];
 
     private static bool IsSeparator(string delimiter) => !Is(delimiter, Openers) && !Is(delimiter, Closers);
 

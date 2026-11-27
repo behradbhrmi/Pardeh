@@ -7,6 +7,15 @@ public sealed class JunkTextTests
 {
     [Theory]
     [InlineData("Song | www.site.com", "Song")]
+    // A Persian music site's name set apart from the real value.
+    [InlineData("Singer Name ♫ سایت نمونه موزیک ♫", "Singer Name")]
+    [InlineData("♫ سایت نمونه موزیک ♫", "")]
+    [InlineData("Singer Name  -  نمونه موزیک", "Singer Name")]
+    [InlineData("Song [ نمونه موزیک ]", "Song")]
+    [InlineData("(نمونه موزیک)", "")]
+    // What converters leave behind goes whole.
+    [InlineData("Converted by SomeDownloader.com", "")]
+    [InlineData("[ Download In SomeMusics.com ]", "")]
     [InlineData("Song [MySite.ir]", "Song")]
     [InlineData("Song (http://dl.site.net/a.mp3)", "Song")]
     [InlineData("Song - Site.com", "Song")]
@@ -37,6 +46,11 @@ public sealed class JunkTextTests
     }
 
     [Theory]
+    // A Persian name with "music" in it, not set apart, may be real; so may a bracket that goes on after the word.
+    [InlineData("گروه موزیک")]
+    [InlineData("Song (موزیک ویدیو)")]
+    // The MP3 encoder's own address is not a download site.
+    [InlineData("LAME 64bits version 3.100 (http://lame.sf.net)")]
     [InlineData("will.i.am")]
     [InlineData("R.E.M.")]
     [InlineData("St.Germain")]
