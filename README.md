@@ -154,6 +154,16 @@ sliders. The Pardeh logo can follow the colour too.
 - Queue tools: sort, reverse, shuffle, remove duplicates, filter. The last queue comes back paused.
 - Playlists, including downloaded `.m3u`, `.pls`, `.asx`, `.xspf` and `.wpl` lists of network addresses.
 
+### Fix Info
+
+- Cleans up downloaded songs, one at a time or the whole library: website text in tags and covers, names read from file
+  names, and file renaming by a pattern of yours (off by default). You see every change first, and can undo it.
+- These checks run on your device. Songs that need a look are marked in the library.
+- For one song, you can also look up its details and cover online. This is **off** until you turn it on, and happens only
+  when you ask. It sends the title and artist (or words from the file name) to [MusicBrainz](https://musicbrainz.org),
+  with the app's name, version and this project's address. Covers come from the
+  [Cover Art Archive](https://coverartarchive.org) on the Internet Archive; they belong to their owners.
+
 ### Lyrics, chords and tabs
 
 - Timed or plain lyrics from tags, from files next to the song, or typed in yourself, with right-to-left text.
