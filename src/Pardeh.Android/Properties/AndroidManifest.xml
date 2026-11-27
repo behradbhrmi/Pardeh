@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
   <!-- The application label / icon are static: they follow the ClassicBranding build property (see the csproj). The launcher
        entries below are two aliases of MainActivity; the in-app "Classic branding" switch enables exactly one of them at run time. -->
-  <application android:label="${appLabel}" android:icon="${appIcon}" android:roundIcon="${appRoundIcon}" android:allowBackup="true" android:extractNativeLibs="true">
+  <application android:label="${appLabel}" android:icon="${appIcon}" android:roundIcon="${appRoundIcon}" android:allowBackup="true" android:extractNativeLibs="true" android:requestLegacyExternalStorage="true">
     <activity-alias android:name="org.pardeh.player.LauncherClassic" android:targetActivity="org.pardeh.player.MainActivity"
         android:label="Windows Media Player" android:icon="@mipmap/ic_launcher_classic" android:roundIcon="@mipmap/ic_launcher_classic_round"
         android:enabled="${classicEnabled}" android:exported="true">
@@ -24,6 +24,8 @@
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+  <!-- Changing the user's files (Edit Info, rename, remove) on Android 7 to 10. From Android 11 the system asks per file. -->
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
   <uses-permission android:name="android.permission.INTERNET" />
   <!-- TODO(android): media notification and background playback. -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

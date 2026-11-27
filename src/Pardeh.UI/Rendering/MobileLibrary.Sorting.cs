@@ -158,6 +158,7 @@ internal sealed partial class MobileLibraryView
     /// </summary>
     private Control SongList(List<LibraryItem> source, string empty, string level = "songs")
     {
+        source = Current(source); // a page built again after files changed
         var hasDefault = level is not ("songs" or "videos");
         var fallback = new SortSpec(hasDefault ? SortField.Default : SortField.Title);
         var sort = AppSettings.Current.SortOf(level, fallback);

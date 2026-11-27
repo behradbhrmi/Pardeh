@@ -22,6 +22,14 @@ internal sealed class AndroidPlatformServices : IPlatformServices
 
     public bool HasDeviceMedia => true;
 
+    /// <summary>Picked folders, shared storage, and the app's own folders (which behave like any plain folder).</summary>
+    public IReadOnlyList<Pardeh.Core.Changes.IFileBackend> CreateFileBackends() =>
+    [
+        new AndroidTreeFileBackend(),
+        new AndroidMediaFileBackend(),
+        new Pardeh.Core.Changes.LocalFileBackend(Pardeh.Core.Changes.HoldingFolder.At(System.IO.Path.Combine(AppPaths.DataDirectory, "held"))),
+    ];
+
     public byte[]? VideoThumbnail(string source, int size)
     {
         try

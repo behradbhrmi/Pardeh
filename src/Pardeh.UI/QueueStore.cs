@@ -15,6 +15,46 @@ internal sealed class QueueStore
 
     public sealed record State(List<Entry> Items, int Index, double Position);
 
+    /// <summary>
+    /// The saved queue while the app has none yet: when a change to a file is finished at start-up, <c>queue.json</c> follows
+    /// it before it is restored.
+    /// </summary>
+    public sealed class SavedQueue : Pardeh.Core.Changes.IQueueLink
+    {
+        public void Relink(string oldSource, string newSource, MediaItem fresh) => Rewrite(oldSource, entry =>
+            new Entry(newSource, fresh.Name, fresh.Duration > TimeSpan.Zero ? fresh.Duration.TotalSeconds : entry.Duration, new Dictionary<string, string>(fresh.Attributes)));
+
+        public void Remove(string source) => Rewrite(source, _ => null);
+
+        private static void Rewrite(string source, Func<Entry, Entry?> change)
+        {
+            try
+            {
+                if (!File.Exists(FilePath) || JsonSerializer.Deserialize<State>(File.ReadAllText(FilePath)) is not { } state)
+                    return;
+                var items = new List<Entry>();
+                var index = state.Index;
+                var changed = false;
+                for (var i = 0; i < state.Items.Count; i++)
+                {
+                    var entry = state.Items[i];
+                    var now = string.Equals(entry.Source, source, StringComparison.OrdinalIgnoreCase) ? change(entry) : entry;
+                    changed |= !ReferenceEquals(now, entry);
+                    if (now is not null)
+                        items.Add(now);
+                    else if (i < state.Index)
+                        index--;
+                }
+
+                if (changed)
+                    File.WriteAllText(FilePath, JsonSerializer.Serialize(state with { Items = items, Index = Math.Clamp(index, 0, Math.Max(0, items.Count - 1)) }));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            {
+            }
+        }
+    }
+
     private readonly MediaPlayer _player;
     private string? _lastJson;
 

@@ -43,6 +43,9 @@ internal sealed class WindowsPlatformServices : IPlatformServices
 
     public void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
+    public IReadOnlyList<Pardeh.Core.Changes.IFileBackend> CreateFileBackends() =>
+        [new Pardeh.Core.Changes.LocalFileBackend(IPlatformServices.DesktopHoldingFolder(), new RecycleBin())];
+
     public IFileAssociationService? FileAssociations { get; } = new WindowsFileAssociations();
 
     public IWmpImportService? WmpImport { get; } = new WindowsWmpImport();

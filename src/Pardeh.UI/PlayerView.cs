@@ -229,6 +229,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         StartupMarks.Mark("library cache loading");
         _library.LoadCache();
         StartupMarks.Mark("library cache loaded");
+        StartFileChanges(); // finishes an interrupted change before anything scans or restores the queue
         // The folder scan, the folder watchers and the system integration (media session, notification) are not needed for the
         // first frame: on Android they wait until the UI is idle, so the JIT-bound first script engine start is not slowed down.
         void StartBackgroundWork()
@@ -246,7 +247,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         // Play counts and "last played" for the library (ratings, auto playlists).
         _player.CurrentMediaChanged += (_, _) =>
         {
-            if (_player.CurrentMedia is { } played)
+            if (_player.CurrentMedia is { } played && !_player.IsResumingFile) // taken up again after a file change
                 _library.RecordPlay(played.Source);
         };
 
@@ -269,8 +270,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         // Development aid: PARDEH_ADD_FOLDER=<path> adds a library folder (for tests on a device).
         if (Environment.GetEnvironmentVariable("PARDEH_ADD_FOLDER") is { Length: > 0 } devFolder && Directory.Exists(devFolder))
             _library.AddFolder(devFolder);
-        RestoreDesktopLyrics();
-        StartupMarks.Mark("PlayerView.Start end (full mode loaded)");
+        RestoreDesktopLyrics();        StartupMarks.Mark("PlayerView.Start end (full mode loaded)");
         _lastTick = _clock.Elapsed;
         _timer.Start();
     }
@@ -1286,9 +1286,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     private Task ShowOptions() =>
         Shell is { } shell ? Rendering.OptionsDialog.Show(shell, _player, _library, ApplySettings, this) : Task.CompletedTask;
 
-    private Task<bool> EditTags(string path) =>
-        Shell is { } shell ? Rendering.TagEditorDialog.Edit(shell, path) : Task.FromResult(false);
-
     private static IWmpImportService WmpImport => Platform.WmpImport!;
     private readonly Pardeh.Core.Library.PlaylistStore _playlists = new(Path.Combine(AppPaths.DataDirectory, "Playlists"));
 
@@ -1660,6 +1657,8 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         };
         if (PhoneSkin.IsPhoneKey(CurrentFullModeKey()))
             items.Insert(items.IndexOf(skinsMenu), Item(PhoneToolsItem, ShowPhoneTools));
+        if (UndoFileChangeEntry() is { } undo)
+            items.Insert(items.IndexOf(skinsMenu), Item(undo.Header, undo.Run));
         // The compact window and the bars-only window have no menu bar: what it holds is reachable here too.
         if (!OperatingSystem.IsAndroid())
         {
@@ -1710,6 +1709,13 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         {
             _activeMenu = null;
             menu.Close();
+            return true;
+        }
+
+        if (_closeTagEditor is { } closeEditor)
+        {
+            _closeTagEditor = null;
+            closeEditor();
             return true;
         }
 
@@ -1972,11 +1978,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 return null;
             case "edittags":
                 var tagPath = Arg(0);
-                Dispatcher.UIThread.Post(async () =>
-                {
-                    if (await EditTags(tagPath))
-                        _ = _library.ScanAsync();
-                });
+                Dispatcher.UIThread.Post(() => _ = EditTags(tagPath));
                 return null;
             case "libraryimportplaylist":
                 Dispatcher.UIThread.Post(ImportPlaylist);
@@ -2280,6 +2282,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 .. OperatingSystem.IsAndroid() ? Array.Empty<object>() : [WindowStyleMenu()],
                 GlyphItem("", "Settings", () => ShowPane("skins")),
                 .. PhoneSkin.IsPhoneKey(CurrentFullModeKey()) ? new object[] { GlyphItem("", PhoneToolsItem, ShowPhoneTools) } : [],
+                .. UndoFileChangeEntry() is { } undoChange ? new object[] { Item(undoChange.Header, undoChange.Run) } : [],
                 new Separator(),
                 new MenuItem { Header = "Play", Icon = Glyph(""), ItemsSource = MenuItems("play") },
                 new MenuItem { Header = "View", Icon = Glyph(""), ItemsSource = MenuItems("view") },
@@ -2295,6 +2298,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 .. OperatingSystem.IsAndroid() ? Array.Empty<object>() : [RecentAddressMenu()],
                 Item("Add Folder to Library...", AddFolderToLibrary),
                 Item("Search Library Again", () => _ = _library.ScanAsync()),
+                .. UndoFileChangeEntry() is { } undoFile ? new object[] { Item(undoFile.Header, undoFile.Run) } : [],
                 new Separator(),
                 .. ImportMenu(),
                 Item("Exit", Close, KeyCmd.Quit),

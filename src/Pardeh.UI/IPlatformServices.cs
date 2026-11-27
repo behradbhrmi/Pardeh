@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Pardeh.Core.Changes;
 using Pardeh.Core.Playback;
 using Pardeh.Skinning.Runtime;
 
@@ -95,6 +96,17 @@ public interface IPlatformServices
 
     /// <summary>The platform's build number of the installed app (Android: the version code), as text; else null.</summary>
     string? AppBuild => null;
+
+    /// <summary>
+    /// How this platform changes the user's files (tags, names, removal). The default is plain paths with a holding folder
+    /// in the user's home folder. PARDEH_HELD_DIR=&lt;folder&gt; is a development aid that moves the holding folder.
+    /// </summary>
+    IReadOnlyList<IFileBackend> CreateFileBackends() => [new LocalFileBackend(DesktopHoldingFolder())];
+
+    static HoldingFolder DesktopHoldingFolder() =>
+        Environment.GetEnvironmentVariable("PARDEH_HELD_DIR") is { Length: > 0 } custom
+            ? HoldingFolder.At(custom)
+            : HoldingFolder.ForDesktop(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
 
     IFileAssociationService? FileAssociations => null;
 

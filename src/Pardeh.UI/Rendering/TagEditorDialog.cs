@@ -2,102 +2,71 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Pardeh.Core.Changes;
 
 namespace Pardeh.UI.Rendering;
 
-/// <summary>Library › Edit Info: title, artist, album, genre, year and track number, written into the file's tags.</summary>
+/// <summary>Library › Edit Info: title, artist, album, genre, year and track number. It only asks; the change service writes.</summary>
 internal static class TagEditorDialog
 {
-    /// <summary>Shows the editor; returns true when the tags were saved.</summary>
-    public static async Task<bool> Edit(Window owner, string path)
+    /// <summary>Shows the editor; returns what the user changed, or null when cancelled.</summary>
+    public static async Task<TagFields?> Ask(Window owner, string fileName, TagFields current)
     {
-        TagLib.File file;
-        try
+        var shown = TagForm.Values(current);
+        var boxes = shown.Select(value => new TextBox { Text = value, Width = 320 }).ToArray();
+
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), RowSpacing = 6, ColumnSpacing = 10 };
+        for (var i = 0; i < boxes.Length; i++)
         {
-            file = TagLib.File.Create(path);
-        }
-        catch (Exception ex) when (ex is TagLib.UnsupportedFormatException or TagLib.CorruptFileException or IOException or UnauthorizedAccessException)
-        {
-            PlatformServices.Current.Inform(owner, "This file's information can't be edited:\n" + ex.Message, "Edit Info");
-            return false;
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            var label = new TextBlock { Text = TagForm.Labels[i] + ":", VerticalAlignment = VerticalAlignment.Center, FontFamily = UiTheme.Family, Foreground = Brushes.Black };
+            Grid.SetRow(label, i);
+            Grid.SetRow(boxes[i], i);
+            Grid.SetColumn(boxes[i], 1);
+            grid.Children.Add(label);
+            grid.Children.Add(boxes[i]);
         }
 
-        using (file)
+        TagFields? result = null;
+        var error = new TextBlock { Foreground = Brushes.DarkRed, FontFamily = UiTheme.Family, TextWrapping = TextWrapping.Wrap, IsVisible = false };
+        var ok = new Button { Content = "OK", Width = 75, IsDefault = true, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Content = "Cancel", Width = 75, IsCancel = true, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var dialog = new Window
         {
-            var tag = file.Tag;
-            var fields = new (string Label, TextBox Box)[]
+            Title = "Edit Info - " + fileName,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            CanResize = false,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
             {
-                ("Title", new TextBox { Text = tag.Title ?? string.Empty }),
-                ("Artist", new TextBox { Text = tag.JoinedPerformers ?? string.Empty }),
-                ("Album artist", new TextBox { Text = tag.JoinedAlbumArtists ?? string.Empty }),
-                ("Album", new TextBox { Text = tag.Album ?? string.Empty }),
-                ("Genre", new TextBox { Text = tag.JoinedGenres ?? string.Empty }),
-                ("Year", new TextBox { Text = tag.Year > 0 ? tag.Year.ToString() : string.Empty }),
-                ("Track number", new TextBox { Text = tag.Track > 0 ? tag.Track.ToString() : string.Empty }),
-            };
+                Margin = new Thickness(14),
+                Spacing = 12,
+                Children =
+                {
+                    grid,
+                    error,
+                    new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { ok, cancel } },
+                },
+            },
+        };
 
-            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), RowSpacing = 6, ColumnSpacing = 10 };
-            for (var i = 0; i < fields.Length; i++)
+        ok.Click += (_, _) =>
+        {
+            var (change, problem) = TagForm.Read(shown, boxes.Select(b => b.Text ?? string.Empty).ToArray());
+            if (change is null)
             {
-                grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-                var label = new TextBlock { Text = fields[i].Label + ":", VerticalAlignment = VerticalAlignment.Center, FontFamily = UiTheme.Family, Foreground = Brushes.Black };
-                Grid.SetRow(label, i);
-                Grid.SetRow(fields[i].Box, i);
-                Grid.SetColumn(fields[i].Box, 1);
-                fields[i].Box.Width = 320;
-                grid.Children.Add(label);
-                grid.Children.Add(fields[i].Box);
+                error.Text = problem;
+                error.IsVisible = true;
+                return;
             }
 
-            var saved = false;
-            var ok = new Button { Content = "OK", Width = 75, IsDefault = true, HorizontalContentAlignment = HorizontalAlignment.Center };
-            var cancel = new Button { Content = "Cancel", Width = 75, IsCancel = true, HorizontalContentAlignment = HorizontalAlignment.Center };
-            var dialog = new Window
-            {
-                Title = "Edit Info - " + Path.GetFileName(path),
-                SizeToContent = SizeToContent.WidthAndHeight,
-                CanResize = false,
-                ShowInTaskbar = false,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Content = new StackPanel
-                {
-                    Margin = new Thickness(14),
-                    Spacing = 12,
-                    Children =
-                    {
-                        grid,
-                        new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right, Children = { ok, cancel } },
-                    },
-                },
-            };
-
-            ok.Click += (_, _) =>
-            {
-                string Value(int i) => fields[i].Box.Text?.Trim() ?? string.Empty;
-                string[] List(int i) => Value(i).Length == 0 ? [] : Value(i).Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                try
-                {
-                    tag.Title = Value(0);
-                    tag.Performers = List(1);
-                    tag.AlbumArtists = List(2);
-                    tag.Album = Value(3);
-                    tag.Genres = List(4);
-                    tag.Year = uint.TryParse(Value(5), out var year) ? year : 0;
-                    tag.Track = uint.TryParse(Value(6), out var track) ? track : 0;
-                    file.Save();
-                    saved = true;
-                    dialog.Close();
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
-                {
-                    PlatformServices.Current.Inform(dialog,
-                        "Couldn't save (is the file playing or read-only?):\n" + ex.Message, "Edit Info");
-                }
-            };
-            cancel.Click += (_, _) => dialog.Close();
-            UiTheme.Dialog(dialog);
-            await dialog.ShowDialog(owner);
-            return saved;
-        }
+            result = change;
+            dialog.Close();
+        };
+        cancel.Click += (_, _) => dialog.Close();
+        UiTheme.Dialog(dialog);
+        await dialog.ShowDialog(owner);
+        return result;
     }
 }

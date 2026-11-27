@@ -163,6 +163,58 @@ public sealed class MainActivity : AvaloniaMainActivity
         return source.Task;
     }
 
+    // Codes of their own, far from those Avalonia's pickers use.
+    private static readonly Dictionary<int, TaskCompletionSource<(Result Result, Intent? Data)>> Answers = [];
+    private static int _nextAnswer = 52_000;
+
+    private Task<(Result Result, Intent? Data)> AnswerTo(Action<int> start)
+    {
+        var source = new TaskCompletionSource<(Result, Intent?)>();
+        var code = _nextAnswer++;
+        Answers[code] = source;
+        try
+        {
+            start(code);
+        }
+        catch (Exception ex) when (ex is Java.Lang.Exception or IntentSender.SendIntentException)
+        {
+            Answers.Remove(code);
+            source.TrySetResult((Result.Canceled, null));
+        }
+
+        return source.Task;
+    }
+
+    /// <summary>Shows a system question about the user's files (change, move to trash). True when they agreed.</summary>
+    internal async Task<bool> AgreeAsync(PendingIntent request) =>
+        (await AnswerTo(code => StartIntentSenderForResult(request.IntentSender, code, null, 0, 0, 0))).Result == Result.Ok;
+
+    /// <summary>Asks the user to pick a folder once more, to get write access to it. True when that same folder was picked.</summary>
+    internal async Task<bool> PickAgainAsync(AndroidUri tree)
+    {
+        global::Android.Widget.Toast.MakeText(this, "To change files here, choose this folder again: " + Pardeh.Core.Library.MediaSources.FolderLabel(tree.ToString()!),
+            global::Android.Widget.ToastLength.Long)?.Show();
+        var pick = new Intent(Intent.ActionOpenDocumentTree);
+        pick.AddFlags(ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission | ActivityFlags.GrantPersistableUriPermission);
+        if (OperatingSystem.IsAndroidVersionAtLeast(26))
+            pick.PutExtra(global::Android.Provider.DocumentsContract.ExtraInitialUri,
+                global::Android.Provider.DocumentsContract.BuildDocumentUriUsingTree(tree, global::Android.Provider.DocumentsContract.GetTreeDocumentId(tree)));
+        var (result, data) = await AnswerTo(code => StartActivityForResult(pick, code));
+        if (result != Result.Ok || data?.Data is not { } picked
+            || global::Android.Provider.DocumentsContract.GetTreeDocumentId(picked) != global::Android.Provider.DocumentsContract.GetTreeDocumentId(tree)
+            || picked.Authority != tree.Authority)
+            return false;
+        ContentResolver?.TakePersistableUriPermission(picked, ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
+        return true;
+    }
+
+    protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
+    {
+        base.OnActivityResult(requestCode, resultCode, data);
+        if (Answers.Remove(requestCode, out var source))
+            source.TrySetResult((resultCode, data));
+    }
+
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);

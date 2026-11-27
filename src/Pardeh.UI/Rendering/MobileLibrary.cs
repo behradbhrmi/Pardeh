@@ -388,6 +388,50 @@ internal sealed partial class MobileLibraryView : UserControl
         _jumpCapsule.IsVisible = _jumpTop.IsVisible || _jumpEnd.IsVisible;
     }
 
+    // Pages keep the songs they were opened with. These say where the app has since moved or removed their files.
+    private readonly Dictionary<string, string> _renamed = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _gone = new(StringComparer.Ordinal);
+
+    /// <summary>The app changed, renamed, removed or restored files: the page on show is drawn again, where it was scrolled to.</summary>
+    public void FilesChanged(IReadOnlyList<Pardeh.Core.Changes.ChangeResult> results)
+    {
+        foreach (var result in results.Where(r => r.Status == Pardeh.Core.Changes.ResultStatus.Done))
+        {
+            if (result.NewSource is not { } now)
+            {
+                _gone.Add(result.Source);
+                continue;
+            }
+
+            _gone.Remove(now);
+            _renamed.Remove(now); // renaming back must not lead round in a circle
+            if (now != result.Source)
+                _renamed[result.Source] = now;
+        }
+
+        if (!_searching)
+            Render(_scroll.Offset.Y);
+    }
+
+    /// <summary>The songs a page was opened with, as they are in the library now.</summary>
+    private List<LibraryItem> Current(List<LibraryItem> opened)
+    {
+        var library = new Dictionary<string, LibraryItem>(StringComparer.Ordinal);
+        foreach (var item in _library.Items)
+            library.TryAdd(item.Path, item);
+        var now = new List<LibraryItem>(opened.Count);
+        foreach (var item in opened)
+        {
+            var path = item.Path;
+            for (var steps = 0; steps < _renamed.Count && _renamed.TryGetValue(path, out var next); steps++)
+                path = next;
+            if (!_gone.Contains(path))
+                now.Add(library.GetValueOrDefault(path) ?? item); // not in the library (a favourite): as it was
+        }
+
+        return now;
+    }
+
     private void Render(double restoreOffset = 0)
     {
         _applyFilter = null; // the page built below says which pages can be filtered live (see SongList / GroupPage)

@@ -135,8 +135,19 @@ internal sealed class AndroidMediaSources : ILibrarySourceProvider
         }
     }
 
-    private static void Persist(string uri) =>
-        AppContext.ContentResolver?.TakePersistableUriPermission(AndroidUri.Parse(uri)!, ActivityFlags.GrantReadUriPermission);
+    // Read and write (changing tags, names and removing need write); a source that only grants reading keeps that.
+    private static void Persist(string uri)
+    {
+        try
+        {
+            AppContext.ContentResolver?.TakePersistableUriPermission(AndroidUri.Parse(uri)!,
+                ActivityFlags.GrantReadUriPermission | ActivityFlags.GrantWriteUriPermission);
+        }
+        catch (Java.Lang.SecurityException)
+        {
+            AppContext.ContentResolver?.TakePersistableUriPermission(AndroidUri.Parse(uri)!, ActivityFlags.GrantReadUriPermission);
+        }
+    }
 
     public bool Handles(string folder) => folder.StartsWith("mediastore:", StringComparison.Ordinal) || MediaSources.IsContent(folder);
 
