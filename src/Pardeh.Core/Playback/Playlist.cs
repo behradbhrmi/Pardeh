@@ -71,6 +71,17 @@ public sealed class Playlist
         Notify();
     }
 
+    /// <summary>Puts another item in the same place (a renamed file): the position, shuffle order and added order stay.</summary>
+    public void Replace(int index, MediaItem item)
+    {
+        if (index < 0 || index >= _items.Count || ReferenceEquals(_items[index], item))
+            return;
+        if (_addedOrder.Remove(_items[index], out var order))
+            _addedOrder[item] = order;
+        _items[index] = item;
+        Notify();
+    }
+
     /// <summary>Removes an item; the current item stays current (or nothing is, if it was removed).</summary>
     public void RemoveAt(int index)
     {

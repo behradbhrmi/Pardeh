@@ -4,6 +4,18 @@ using System.Text.Json.Serialization;
 
 namespace Pardeh.Core.LyricsKit;
 
+/// <summary>The parts of what is saved for a track.</summary>
+[Flags]
+public enum LyricsPieces
+{
+    None = 0,
+    Own = 1,
+    Fetched = 2,
+    Chords = 4,
+    Offset = 8,
+    Transpose = 16,
+}
+
 /// <summary>What the index remembers about one track (everything optional; an entry with nothing left is removed).</summary>
 public sealed class LyricsIndexEntry
 {
@@ -346,6 +358,116 @@ public sealed class LyricsStore
             }
 
             SaveIndex();
+        }
+    }
+
+    // --- a track whose tags or name changed --------------------------------------------------------------------------------------
+
+    /// <summary>What is saved under a key.</summary>
+    public LyricsPieces PiecesOf(LyricsTrackKey key)
+    {
+        lock (_gate)
+        {
+            if (!Index.TryGetValue(key.Hash, out var entry))
+                return LyricsPieces.None;
+            return (entry.OverrideFile is null ? LyricsPieces.None : LyricsPieces.Own)
+                | (entry.FetchedFile is null ? LyricsPieces.None : LyricsPieces.Fetched)
+                | (entry.ChordsFile is null ? LyricsPieces.None : LyricsPieces.Chords)
+                | (entry.OffsetMs == 0 ? LyricsPieces.None : LyricsPieces.Offset)
+                | (entry.Transpose == 0 ? LyricsPieces.None : LyricsPieces.Transpose);
+        }
+    }
+
+    /// <summary>
+    /// What a <see cref="Transfer"/> from one track key to another would move: only what the old key has and the new one has
+    /// not, so that lyrics already saved under the new key are never replaced. A "not found" mark is not moved: new details
+    /// deserve a new look-up.
+    /// </summary>
+    public LyricsPieces PlanTransfer(LyricsTrackKey from, LyricsTrackKey to)
+    {
+        lock (_gate)
+        {
+            if (from.Hash == to.Hash || !Index.TryGetValue(from.Hash, out var old))
+                return LyricsPieces.None;
+            Index.TryGetValue(to.Hash, out var target);
+            var pieces = LyricsPieces.None;
+            if (old.OverrideFile is not null && target?.OverrideFile is null)
+                pieces |= LyricsPieces.Own;
+            if (old.FetchedFile is not null && target?.FetchedFile is null)
+                pieces |= LyricsPieces.Fetched;
+            if (old.ChordsFile is not null && target?.ChordsFile is null)
+                pieces |= LyricsPieces.Chords;
+            if (old.OffsetMs != 0 && (target?.OffsetMs ?? 0) == 0)
+                pieces |= LyricsPieces.Offset;
+            if (old.Transpose != 0 && (target?.Transpose ?? 0) == 0)
+                pieces |= LyricsPieces.Transpose;
+            return pieces;
+        }
+    }
+
+    /// <summary>
+    /// Carries <paramref name="pieces"/> from one key to another. With <paramref name="keepOld"/> (another track still has
+    /// the old key) they are copied. Safe to run twice. Throws when a file can't be copied; nothing is lost then.
+    /// </summary>
+    public void Transfer(LyricsTrackKey from, LyricsTrackKey to, LyricsPieces pieces, bool keepOld)
+    {
+        lock (_gate)
+        {
+            if (pieces == LyricsPieces.None || from.Hash == to.Hash || !Index.TryGetValue(from.Hash, out var old))
+                return;
+            var entry = Entry(to);
+            var moved = new List<string>();
+
+            string? Copy(string? name, string folder)
+            {
+                if (name is null)
+                    return null;
+                var source = Path.Combine(folder, name);
+                if (!File.Exists(source))
+                    return null;
+                var copy = to.Hash + Path.GetExtension(name);
+                File.Copy(source, Path.Combine(folder, copy), overwrite: true); // the new key has no such piece of its own
+                moved.Add(source);
+                return copy;
+            }
+
+            if (pieces.HasFlag(LyricsPieces.Own) && Copy(old.OverrideFile, _folder) is { } own)
+                entry.OverrideFile = own;
+            if (pieces.HasFlag(LyricsPieces.Fetched) && Copy(old.FetchedFile, OnlineFolder) is { } fetched)
+            {
+                entry.FetchedFile = fetched;
+                entry.Provider = old.Provider;
+                entry.FetchedUtc = old.FetchedUtc;
+                entry.NotFoundUtc = null;
+            }
+
+            if (pieces.HasFlag(LyricsPieces.Chords) && Copy(old.ChordsFile, _folder) is { } chords)
+                entry.ChordsFile = chords;
+            if (pieces.HasFlag(LyricsPieces.Offset) && old.OffsetMs != 0)
+                entry.OffsetMs = old.OffsetMs;
+            if (pieces.HasFlag(LyricsPieces.Transpose) && old.Transpose != 0)
+                entry.Transpose = old.Transpose;
+
+            if (!keepOld)
+            {
+                if (pieces.HasFlag(LyricsPieces.Own) && entry.OverrideFile is not null)
+                    old.OverrideFile = null;
+                if (pieces.HasFlag(LyricsPieces.Fetched) && entry.FetchedFile is not null)
+                    (old.FetchedFile, old.Provider, old.FetchedUtc) = (null, null, null);
+                if (pieces.HasFlag(LyricsPieces.Chords) && entry.ChordsFile is not null)
+                    old.ChordsFile = null;
+                if (pieces.HasFlag(LyricsPieces.Offset))
+                    old.OffsetMs = 0;
+                if (pieces.HasFlag(LyricsPieces.Transpose))
+                    old.Transpose = 0;
+            }
+
+            Tidy(to);
+            Tidy(from);
+            SaveIndex();
+            if (!keepOld)
+                foreach (var file in moved)
+                    DeleteFile(file); // only after the index points at the copies
         }
     }
 

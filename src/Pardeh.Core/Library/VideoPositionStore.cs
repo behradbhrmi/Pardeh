@@ -65,6 +65,24 @@ public sealed class VideoPositionStore
         }
     }
 
+    /// <summary>A file was renamed: its remembered place follows it.</summary>
+    public void Move(string from, string to)
+    {
+        lock (_lock)
+        {
+            var at = IndexOf(KeyOf(from));
+            var key = KeyOf(to);
+            if (at < 0 || _entries[at].Source == key)
+                return;
+            var entry = _entries[at] with { Source = key };
+            _entries.RemoveAt(at);
+            if (IndexOf(key) is >= 0 and var there)
+                _entries.RemoveAt(there);
+            _entries.Add(entry);
+            Save();
+        }
+    }
+
     private void Save()
     {
         try

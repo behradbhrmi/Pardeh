@@ -140,6 +140,49 @@ public sealed class FavoritesStore
         return now;
     }
 
+    /// <summary>The entry a source is a favourite under, or null.</summary>
+    public FavoriteEntry? Find(string source)
+    {
+        lock (_gate)
+            return _entries.TryGetValue(KeyOf(source), out var entry) ? entry : null;
+    }
+
+    /// <summary>A file was renamed or retagged: the favourite follows it, keeping when it was added.</summary>
+    public void Move(string from, string to, string title, string artist)
+    {
+        var oldKey = KeyOf(from);
+        var key = KeyOf(to);
+        if (key.Length == 0)
+            return;
+        lock (_gate)
+        {
+            if (!_entries.TryGetValue(oldKey, out var old))
+                return;
+            _entries.Remove(oldKey);
+            _entries[key] = new FavoriteEntry { Key = key, Path = to, Title = title, Artist = artist, Added = old.Added };
+            Save();
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Puts back a favourite that left with its file.</summary>
+    public void Restore(FavoriteEntry entry, string source)
+    {
+        var key = KeyOf(source);
+        if (key.Length == 0)
+            return;
+        lock (_gate)
+        {
+            if (_entries.ContainsKey(key))
+                return;
+            _entries[key] = new FavoriteEntry { Key = key, Path = source, Title = entry.Title, Artist = entry.Artist, Added = entry.Added };
+            Save();
+        }
+
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public void Clear()
     {
         lock (_gate)

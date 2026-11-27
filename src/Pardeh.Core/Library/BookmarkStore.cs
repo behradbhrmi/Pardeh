@@ -105,6 +105,20 @@ public sealed class BookmarkStore
         }
     }
 
+    /// <summary>A file was renamed: its markers follow it (added to any already under the new name).</summary>
+    public void Move(string from, string to)
+    {
+        lock (_lock)
+        {
+            if (string.Equals(from, to, StringComparison.Ordinal) || !_marks.Remove(from, out var moving))
+                return;
+            if (_marks.TryGetValue(to, out var there))
+                moving = [.. there.Concat(moving).Distinct().OrderBy(m => m.Seconds)];
+            _marks[to] = moving;
+            Save();
+        }
+    }
+
     private void Save()
     {
         try

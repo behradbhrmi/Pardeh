@@ -123,6 +123,28 @@ internal static class FfmpegTool
         return null;
     }
 
+    /// <summary>Makes a small real JPEG of one colour (picked by <paramref name="seed"/>) and returns its bytes.</summary>
+    public static byte[] MakeJpeg(string path, int seed)
+    {
+        var colour = new[] { "red", "green", "blue", "orange", "purple", "teal", "navy", "olive" }[seed % 8];
+        Run("-f", "lavfi", "-i", $"color=c={colour}:s={160 + seed}x160:d=1", "-frames:v", "1", path);
+        return File.ReadAllBytes(path);
+    }
+
+    private static void Run(params string[] arguments)
+    {
+        var (exe, dlls) = Tool ?? throw new InvalidOperationException("ffmpeg not available");
+        var start = new ProcessStartInfo(exe) { UseShellExecute = false, RedirectStandardError = true, RedirectStandardOutput = true, CreateNoWindow = true };
+        start.Environment["PATH"] = dlls + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+        foreach (var arg in new[] { "-hide_banner", "-loglevel", "error", "-y" }.Concat(arguments))
+            start.ArgumentList.Add(arg);
+        using var process = Process.Start(start)!;
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"ffmpeg failed ({process.ExitCode}): {error}");
+    }
+
     /// <summary>Makes a one second tone in <paramref name="path"/> (the extension picks the container) with the given tags.</summary>
     public static void MakeAudio(string path, string codec, IReadOnlyDictionary<string, string>? metadata = null)
     {

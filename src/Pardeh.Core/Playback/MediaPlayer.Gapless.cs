@@ -42,7 +42,8 @@ public sealed partial class MediaPlayer
         if (!_gapless || (Equalizer.CrossFade && Equalizer.CrossFadeSeconds > 0) || _playState is not (PlayState.Playing or PlayState.Paused)
             || HasVideo || _sleepAtEndOfTrack || SectionLoopActive)
             return null;
-        return CurrentPlaylist.PeekNext() is { } next && !Library.MediaLibrary.VideoExtensions.Contains(Path.GetExtension(next.Source)) ? next : null;
+        return CurrentPlaylist.PeekNext() is { } next && !Library.MediaLibrary.VideoExtensions.Contains(Path.GetExtension(next.Source))
+            && !IsBeingChanged(next.Source) ? next : null;
     }
 
     private void CheckGapless()

@@ -111,11 +111,151 @@ public sealed class MediaLibrary
     /// <summary>Scans the folders in the background; unchanged files reuse their cached tags.</summary>
     public Task ScanAsync()
     {
-        _scan?.Cancel();
-        var cancel = new CancellationTokenSource();
-        _scan = cancel;
-        return Task.Run(() => Scan(cancel.Token));
+        lock (_gate)
+        {
+            if (_suspended > 0)
+            {
+                _scanWanted = true; // it runs when the file changes are done
+                return Task.CompletedTask;
+            }
+
+            _scan?.Cancel();
+            var cancel = new CancellationTokenSource();
+            _scan = cancel;
+            var task = Task.Run(() => Scan(cancel.Token));
+            _running.RemoveAll(t => t.IsCompleted);
+            _running.Add(task);
+            return task;
+        }
     }
+
+    private int _suspended;
+    private bool _scanWanted;
+    private readonly List<Task> _running = [];
+
+    /// <summary>
+    /// Holds scans off while files are being changed: waits for a running one to finish, and the scans asked for meanwhile
+    /// (by the folder watcher, say) become one, run when the returned object is disposed.
+    /// </summary>
+    public async Task<IDisposable> SuspendScansAsync()
+    {
+        Task[] running;
+        lock (_gate)
+        {
+            _suspended++;
+            running = [.. _running];
+        }
+
+        await Task.WhenAll(running);
+        return new Suspension(this);
+    }
+
+    private sealed class Suspension(MediaLibrary library) : IDisposable
+    {
+        private bool _done;
+
+        public void Dispose()
+        {
+            if (_done)
+                return;
+            _done = true;
+            bool scan;
+            lock (library._gate)
+            {
+                scan = --library._suspended == 0 && library._scanWanted;
+                if (scan)
+                    library._scanWanted = false;
+            }
+
+            if (scan)
+                _ = library.ScanAsync();
+        }
+    }
+
+    // ---- A file the app itself renamed, retagged, removed or brought back ------------------------
+
+    public LibraryItem? Find(string path) => Items.FirstOrDefault(i => string.Equals(i.Path, path, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// A file that was at <paramref name="oldPath"/> is now <paramref name="file"/> (the same path after a tag change). The
+    /// item is read again and keeps its rating and play history; the "single files" and "removed" lists follow. When the
+    /// item has gone from the list meanwhile, <paramref name="history"/> (taken before the change) brings it back.
+    /// Safe to run twice.
+    /// </summary>
+    public void Relink(string oldPath, SourceFile file, LibraryItem? history)
+    {
+        bool Is(LibraryItem item, string path) => string.Equals(item.Path, path, StringComparison.OrdinalIgnoreCase);
+        var listed = Items.Any(i => Is(i, oldPath) || Is(i, file.Path));
+        var fresh = listed || history is not null ? Read(file) : null;
+
+        List<LibraryItem>? items = null;
+        lock (_gate)
+        {
+            if (fresh is not null)
+            {
+                items = [.. _items];
+                var at = items.FindIndex(i => Is(i, oldPath));
+                if (at < 0)
+                    at = items.FindIndex(i => Is(i, file.Path));
+                var previous = at >= 0 ? items[at] : null;
+                var other = items.FirstOrDefault(i => Is(i, file.Path));
+                // What the user gave the track: from the old entry, else from the picture taken before the change.
+                var keep = previous is not null && Is(previous, oldPath) ? previous : history ?? other;
+                if (keep is not null)
+                    fresh = fresh with
+                    {
+                        Rating = keep.Rating != 0 ? keep.Rating : other?.Rating ?? 0,
+                        PlayCount = Math.Max(keep.PlayCount, other?.PlayCount ?? 0),
+                        LastPlayed = other is not null && other.LastPlayed > keep.LastPlayed ? other.LastPlayed : keep.LastPlayed,
+                    };
+                items.RemoveAll(i => Is(i, oldPath) || Is(i, file.Path));
+                items.Insert(Math.Clamp(at, 0, items.Count), fresh);
+                _items = items;
+            }
+        }
+
+        var settings = false;
+        if (!string.Equals(oldPath, file.Path, StringComparison.Ordinal))
+        {
+            if (_files.Remove(oldPath))
+            {
+                _files.Add(file.Path);
+                settings = true;
+            }
+
+            if (_removed.Remove(oldPath))
+            {
+                _removed.Add(file.Path);
+                settings = true;
+            }
+        }
+
+        if (settings)
+            SaveSettings();
+        if (items is not null)
+            SaveCache(items);
+        if (items is not null || settings)
+            Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>The file has left (to a trash or a holding folder): its item goes. The saved lists stay, for when it comes back.</summary>
+    public void Detach(string path)
+    {
+        List<LibraryItem> items;
+        lock (_gate)
+        {
+            items = _items.Where(i => !string.Equals(i.Path, path, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (items.Count == _items.Count)
+                return;
+            _items = items;
+        }
+
+        SaveCache(items);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>True when the path was added as a single file, or was removed from the library by the user.</summary>
+    public bool IsHidden(string path) => _removed.Contains(path);
 
     private void Scan(CancellationToken cancel)
     {
