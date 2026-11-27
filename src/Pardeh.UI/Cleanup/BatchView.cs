@@ -220,8 +220,24 @@ internal sealed class BatchView : UserControl
         _applyButton.IsEnabled = count > 0;
     }
 
-    /// <summary>Shows what is happening instead of the list, with a way to stop.</summary>
-    public void ShowBusy(string message, int done, int total, Action? stop)
+    // Goes up each time the list comes back.
+    private int _shown;
+
+    /// <summary>
+    /// Takes the progress of one piece of work and shows it instead of the list, with a way to stop. Reports that arrive
+    /// after the list is back are dropped: they are posted, so the last one can come late.
+    /// </summary>
+    public Action<(int Done, int Total)> Busy(string message, Action? stop)
+    {
+        var mine = _shown;
+        return progress =>
+        {
+            if (mine == _shown)
+                ShowBusy(message, progress.Done, progress.Total, stop);
+        };
+    }
+
+    private void ShowBusy(string message, int done, int total, Action? stop)
     {
         _page.IsVisible = false;
         _busy.IsVisible = true;
@@ -236,6 +252,7 @@ internal sealed class BatchView : UserControl
     /// <summary>Back to the list.</summary>
     public void ShowList()
     {
+        _shown++;
         _busy.IsVisible = false;
         _page.IsVisible = true;
         _reviewed.Clear();

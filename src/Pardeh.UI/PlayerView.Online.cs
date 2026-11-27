@@ -265,7 +265,7 @@ internal sealed partial class PlayerView
             // The check waits while files are read and changed.
             using var held = _check!.Hold();
             var prepared = await OnlineBatch.PrepareAsync(picks, ReadSong, Metadata.Provider, covers, pattern, DatabaseScript(),
-                new Progress<(int Done, int Total)>(p => view.ShowBusy(covers ? "Preparing and getting covers" : "Preparing", p.Done, p.Total, stop.Cancel)),
+                new Progress<(int Done, int Total)>(view.Busy(covers ? "Preparing and getting covers" : "Preparing", stop.Cancel)),
                 stop.Token);
             var plan = await CleanupPlanner.PlanAsync(changes, prepared.Choices, null, stop.Token);
 
@@ -291,7 +291,7 @@ internal sealed partial class PlayerView
             var result = await Apply($"Fix {plan.Files} {(plan.Files == 1 ? "song" : "songs")} from online results", plan, AskBeforeInterrupting() with
             {
                 Cancel = stop.Token,
-                Progress = new Progress<(int Done, int Total)>(p => view.ShowBusy("Changing files", p.Done, p.Total, stop.Cancel, "Stop after this file")),
+                Progress = new Progress<(int Done, int Total)>(view.Busy("Changing files", stop.Cancel, "Stop after this file")),
             });
             applied = true;
             foreach (var (source, used) in prepared.Used)

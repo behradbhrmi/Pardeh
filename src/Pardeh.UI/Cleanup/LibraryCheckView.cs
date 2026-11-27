@@ -377,8 +377,24 @@ internal sealed class LibraryCheckView : UserControl
         _applyButton.IsEnabled = count > 0;
     }
 
-    /// <summary>Shows what is happening instead of the list, with a way to stop.</summary>
-    public void ShowBusy(string message, int done, int total, Action? stop, string stopLabel = "Stop")
+    // Goes up each time the list comes back.
+    private int _shown;
+
+    /// <summary>
+    /// Takes the progress of one piece of work and shows it instead of the list. Reports that arrive after the list is back
+    /// are dropped: they are posted, so the last one can come late and would cover the list for good.
+    /// </summary>
+    public Action<(int Done, int Total)> Busy(string message, Action? stop, string stopLabel = "Stop")
+    {
+        var mine = _shown;
+        return progress =>
+        {
+            if (mine == _shown)
+                ShowBusy(message, progress.Done, progress.Total, stop, stopLabel);
+        };
+    }
+
+    private void ShowBusy(string message, int done, int total, Action? stop, string stopLabel)
     {
         _page.IsVisible = false;
         _busy.IsVisible = true;
@@ -394,6 +410,7 @@ internal sealed class LibraryCheckView : UserControl
     /// <param name="changed">The batch went ahead: choices made for it are done with.</param>
     public void ShowList(bool changed)
     {
+        _shown++;
         _busy.IsVisible = false;
         _page.IsVisible = true;
         if (changed)

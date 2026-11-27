@@ -753,6 +753,24 @@ public sealed class LibraryCheckViewTests : IDisposable
         Assert.False(Button(view, "Apply").IsEnabled);
     }
 
+    [Fact]
+    public void A_progress_report_that_arrives_late_does_not_cover_the_list_again()
+    {
+        Add("strong", OnlineGroup.Strong);
+        var view = Screen(true);
+        var report = view.Busy("Changing files", null);
+        report((1, 2));
+        Assert.Contains(view.GetLogicalDescendants().OfType<TextBlock>(), t => t.Text == "Changing files");
+        Assert.False(Button(view, "Apply").IsEffectivelyVisible);
+
+        view.ShowList(changed: true);
+        report((2, 2));
+
+        Assert.DoesNotContain(view.GetLogicalDescendants().OfType<Panel>().Where(p => p.IsVisible).SelectMany(p => p.Children).OfType<StackPanel>(),
+            s => s.IsVisible && s.Children.OfType<TextBlock>().Any(t => t.Text == "Changing files"));
+        Assert.True(Button(view, "Apply").IsVisible);
+    }
+
     [Theory]
     [InlineData(10, "under a minute")]
     [InlineData(100, "about 2 minutes")]

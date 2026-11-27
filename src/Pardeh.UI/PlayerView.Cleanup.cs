@@ -305,7 +305,7 @@ internal sealed partial class PlayerView
         {
             // First what it comes to, then the question, and only then the files.
             var plan = await CleanupPlanner.PlanAsync(changes, choices,
-                new Progress<(int Done, int Total)>(p => view.ShowBusy("Preparing", p.Done, p.Total, stop.Cancel)), stop.Token);
+                new Progress<(int Done, int Total)>(view.Busy("Preparing", stop.Cancel)), stop.Token);
             var problems = plan.Problems.Count > 0 ? $"\n{plan.Problems.Count} can't be read and will be left alone." : string.Empty;
             if (plan.IsEmpty)
             {
@@ -319,11 +319,12 @@ internal sealed partial class PlayerView
             var result = await Apply($"Clean up {plan.Files} {(plan.Files == 1 ? "song" : "songs")}", plan, AskBeforeInterrupting() with
             {
                 Cancel = stop.Token,
-                Progress = new Progress<(int Done, int Total)>(p => view.ShowBusy("Changing files", p.Done, p.Total, stop.Cancel)),
+                Progress = new Progress<(int Done, int Total)>(view.Busy("Changing files", stop.Cancel)),
             });
             foreach (var choice in choices)
                 if (_batchUsed.TryGetValue(choice.Source, out var taken))
                     RememberApplied(choice.Source, result, taken);
+            view.ShowList(); // before the question: nothing is going on any more
             await Report(result);
         }
         catch (OperationCanceledException)
