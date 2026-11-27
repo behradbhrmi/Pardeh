@@ -8,6 +8,7 @@ using Pardeh.Skinning.Wmp;
 
 namespace Pardeh.Skinning.Tests;
 
+[Collection("MediaSources statics")]
 public sealed class LibraryTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"pardeh-lib-{Guid.NewGuid():N}");

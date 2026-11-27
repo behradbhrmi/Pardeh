@@ -5,6 +5,7 @@ using Pardeh.Core.Playback;
 namespace Pardeh.Skinning.Tests;
 
 /// <summary>Sorting (library lists and the queue), the queue operations and the favourites store.</summary>
+[Collection("MediaSources statics")]
 public sealed class SortAndFavoritesTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"pardeh-fav-{Guid.NewGuid():N}");
