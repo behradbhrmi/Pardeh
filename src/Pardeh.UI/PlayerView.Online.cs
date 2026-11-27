@@ -17,6 +17,10 @@ internal sealed partial class PlayerView
         + "with Pardeh's name, version and project address. That happens when you ask: for one song, or for your library with Check Library Online. "
         + "Covers come from the Cover Art Archive and the Internet Archive. No folders, files or personal details.";
 
+    /// <summary>What the history switch says.</summary>
+    internal const string HistorySummary =
+        "What you looked up, and what came back, is listed under Looked-Up Songs. It stays on this device (up to 5,000). Turning this off deletes it.";
+
     /// <summary>What the switch for the playing song says.</summary>
     internal const string CheckPlayingSummary =
         "With the switch above on, a song from your library that plays for a few seconds is looked up by itself, once, sending the same details. "
@@ -43,7 +47,8 @@ internal sealed partial class PlayerView
     private void StartOnlineInfo()
     {
         _online = new OnlineStore(Path.Combine(AppPaths.DataDirectory, "fixinfo-online.json"));
-        _checker = new SongChecker(Metadata, _online, ReadSong, DatabaseScript);
+        StartLookupHistory();
+        _checker = new SongChecker(Metadata, _online, ReadSong, DatabaseScript) { History = _history };
         _check = new LibraryCheck(_checker, () => AppSettings.Current.FixInfoOnline);
         _playingCheck = new PlayingSongCheck(_checker, () => AppSettings.Current is { FixInfoOnline: true, FixInfoCheckPlaying: true }, PlayingSongDue);
         _online.Changed += (_, _) => Dispatcher.UIThread.Post(OnlineResultsChanged);
@@ -66,6 +71,7 @@ internal sealed partial class PlayerView
         _playingCheck?.Playing(null);
         _check?.Stop();
         _online?.Flush();
+        _history?.Flush();
     }
 
     // A song's tags now and the local checks of it.
@@ -118,6 +124,7 @@ internal sealed partial class PlayerView
     private void OnlineResultsChanged()
     {
         _checkView?.Fill();
+        _historyView?.Fill();
         // While a check runs results come every second or two: the lists behind are not redrawn that often.
         if (_check?.Progress.IsActive != true)
         {
@@ -176,7 +183,9 @@ internal sealed partial class PlayerView
                     return;
                 _checker!.Save(song, new SongFacts(proposal, current, rules), steps, result);
                 _online!.Flush();
+                _history?.Flush();
             },
+            RememberTyped = result => RememberSearch(result, proposal.Source),
         };
     }
 

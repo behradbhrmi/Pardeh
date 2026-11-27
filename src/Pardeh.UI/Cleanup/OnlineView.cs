@@ -20,6 +20,9 @@ internal sealed record OnlineContext(MetadataLookup Lookup, IReadOnlyList<Lookup
 
     /// <summary>Told what a look-up of the song's own details found (not a search typed by hand).</summary>
     public Action<LookupResult> Remember { get; init; } = _ => { };
+
+    /// <summary>Told what a search typed by hand found, for the history.</summary>
+    public Action<LookupResult> RememberTyped { get; init; } = _ => { };
 }
 
 /// <summary>
@@ -173,6 +176,8 @@ internal sealed class OnlineView : UserControl
                 return;
             if (remember)
                 _context.Remember(result);
+            else
+                _context.RememberTyped(result);
             ShowResult(result, _context.Song, null);
         }
         catch (OperationCanceledException)

@@ -565,6 +565,7 @@ internal static partial class OptionsDialog
                 Section("Fix Info"),
                 Toggle("Look up song details online (MusicBrainz)", PlayerView.OnlineInfoPrivacy, _settings.FixInfoOnline, v => { _settings.FixInfoOnline = v; _settings.Save(); }),
                 Toggle("Check the playing song online", PlayerView.CheckPlayingSummary, _settings.FixInfoCheckPlaying, v => { _settings.FixInfoCheckPlaying = v; _settings.Save(); }),
+                Toggle("Keep a history of look-ups", PlayerView.HistorySummary, _settings.KeepLookupHistory, v => { _settings.KeepLookupHistory = v; _settings.Save(); }),
                 Toggle("Take names in the database's script", "Off: a song with Persian names keeps them in Persian, and one with Latin names in Latin",
                     _settings.FixInfoDatabaseScript, v => { _settings.FixInfoDatabaseScript = v; _settings.Save(); }));
         }

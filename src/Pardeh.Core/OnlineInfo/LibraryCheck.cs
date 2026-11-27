@@ -20,6 +20,9 @@ public sealed class SongChecker(MetadataLookup lookup, OnlineStore store, Func<s
 {
     public OnlineStore Store => store;
 
+    /// <summary>Where each look-up is also written down for the user, if anywhere.</summary>
+    public LookupHistory? History { get; init; }
+
     /// <summary>
     /// The saved result, or null when the file can't be read or has nothing to search for. Throws
     /// <see cref="MetadataException"/> when the service could not be asked: nothing is saved then.
@@ -55,6 +58,7 @@ public sealed class SongChecker(MetadataLookup lookup, OnlineStore store, Func<s
             WantsCover = verdict.WantsCover,
         };
         store.Put(song.Source, entry);
+        History?.AddSong(lookup.Provider.Name, song.Source, entry);
         return entry;
     }
 }

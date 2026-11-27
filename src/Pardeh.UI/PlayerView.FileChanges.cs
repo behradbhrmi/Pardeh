@@ -46,6 +46,8 @@ internal sealed partial class PlayerView
             changes.Changed += (_, results) =>
             {
                 _cleanup?.Forget(results.SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
+                foreach (var moved in results.Where(r => r.Status == ResultStatus.Done && r.NewSource is not null && r.NewSource != r.Source))
+                    _history?.Moved(moved.Source, moved.NewSource!);
                 // What was found online held for the files as they were.
                 _online?.Forget(results.Where(r => r.Status != ResultStatus.Unchanged).SelectMany(r => new[] { r.Source, r.NewSource }).OfType<string>());
                 _ = _cleanup?.ScanAsync(); // the library has the new details already

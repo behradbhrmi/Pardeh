@@ -412,6 +412,8 @@ internal sealed partial class PlayerView
         var waiting = _cleanup.Store.ShowBadges ? _cleanup.Pending().Count : 0;
         yield return (waiting > 0 ? $"Clean Up Library ({waiting})..." : "Clean Up Library...", () => _ = CleanUpLibrary());
         yield return (CheckLibraryHeader(), () => _ = CheckLibraryOnline());
+        foreach (var entry in OnlineSearchMenuEntries())
+            yield return entry;
         foreach (var entry in DuplicateMenuEntries())
             yield return entry;
     }

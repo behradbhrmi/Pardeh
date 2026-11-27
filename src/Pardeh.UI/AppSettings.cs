@@ -161,6 +161,9 @@ public sealed class AppSettings
     /// <summary>Also look the playing song up by itself, once. Off by default, and only with <see cref="FixInfoOnline"/>.</summary>
     public bool FixInfoCheckPlaying { get; set; }
 
+    /// <summary>Keep a history of look-ups on this device (Looked-Up Songs). Turning it off deletes it.</summary>
+    public bool KeepLookupHistory { get; set; } = true;
+
     /// <summary>Suggest the database's script for names, for example Latin in place of Persian. Off: what the song uses stays.</summary>
     public bool FixInfoDatabaseScript { get; set; }
 

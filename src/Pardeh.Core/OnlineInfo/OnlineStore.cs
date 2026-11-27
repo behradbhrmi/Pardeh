@@ -102,6 +102,13 @@ public sealed class OnlineStore
             return _songs.GetValueOrDefault(source) is { } entry && entry.Size == size && entry.Modified == modified ? entry : null;
     }
 
+    /// <summary>Every saved result, by file.</summary>
+    public IReadOnlyList<KeyValuePair<string, OnlineEntry>> All()
+    {
+        lock (_gate)
+            return [.. _songs];
+    }
+
     /// <summary>
     /// Whether asking about the file would be of use: nothing is saved for it as it is, or the saved "no match" is old enough
     /// to try again.
