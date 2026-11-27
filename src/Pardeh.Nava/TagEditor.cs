@@ -39,9 +39,52 @@ public sealed class TagEditor : ITagEditor
 
     public TagFields Read(string path, string name) => Guard(() =>
     {
+        var raw = Frames(path);
         using var file = Open(path, name);
-        return Fields(file.Tag);
+        return All(file, raw);
     });
+
+    /// <summary>Every field of an open file, the extra text fields included.</summary>
+    internal static TagFields All(TagLib.File file, IReadOnlyList<RawFrame>? raw) => Fields(file.Tag) with { Texts = TagTexts.Read(file, raw) };
+
+    private static List<RawFrame>? Frames(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return RawId3.Read(stream);
+    }
+
+    // The frames a change may touch; every other one must say the same afterwards.
+    private static bool MayChange(string key, TagFields change)
+    {
+        bool Is(string id) => key == "id3v2:" + id;
+        return change.Texts?.Any(t => t.Id == key) == true
+            || change.Title is not null && Is("TIT2")
+            || change.Artists is not null && Is("TPE1")
+            || change.AlbumArtists is not null && Is("TPE2")
+            || change.Album is not null && Is("TALB")
+            || Is("TCON") // genre numbers are rewritten as names; the genres themselves are compared as a field
+            || Is("TDRC") || Is("TYER") || Is("TDAT") // the date is compared as a whole
+            || change.Track is not null && Is("TRCK")
+            || change.Comment is not null && key.StartsWith("id3v2:COMM:", StringComparison.Ordinal) && key.EndsWith(':')
+            || change.Composers is not null && Is("TCOM")
+            || change.Copyright is not null && Is("TCOP")
+            || change.Pictures is not null && Is("APIC");
+    }
+
+    // An independent look at the bytes: every frame the change has nothing to do with is still there.
+    private static void CheckFrames(List<RawFrame> before, List<RawFrame> after, TagFields change)
+    {
+        if (change.Year is null && RawId3.Date(before) is { Length: > 0 } date && RawId3.Date(after) != date)
+            throw new TagEditException("Writing would have changed the release date in the file, so it was left as it was.");
+        var there = after.Select(RawId3.Describe).Where(d => d.Content is not null).ToList();
+        foreach (var frame in before.Select(RawId3.Describe))
+        {
+            if (frame.Content is null || MayChange(frame.Key, change))
+                continue;
+            if (!there.Remove(frame))
+                throw new TagEditException($"Writing would have changed other information in the file ({frame.Key}), so it was left as it was.");
+        }
+    }
 
     private static TagFields Fields(TagLib.Tag tag) => new()
     {
@@ -99,6 +142,9 @@ public sealed class TagEditor : ITagEditor
         if (missing.Pictures is { } pictures && pictures.Length == (read.Pictures?.Length ?? 0)
             && pictures.Zip(read.Pictures ?? []).All(p => p.First.Data.AsSpan().SequenceEqual(p.Second.Data)))
             missing = missing with { Pictures = null };
+        // With the comment cleared, another comment frame the file keeps is read in its place.
+        if (missing.Comment is { Length: 0 } && wanted.Texts?.Any(t => t.Value == read.Comment) != true)
+            missing = missing with { Comment = null };
         return missing.IsEmpty;
     }
 
@@ -109,12 +155,13 @@ public sealed class TagEditor : ITagEditor
         Dictionary<string, string> untouched;
         TagLib.TagTypes onDisk;
         TimeSpan duration;
+        var raw = Frames(path);
 
         using (var file = Open(path, name))
         {
             if (file.PossiblyCorrupt)
                 throw new TagEditException("The file looks damaged, so it was left alone.");
-            before = Fields(file.Tag);
+            before = All(file, raw);
             effective = before.Differences(change);
             onDisk = file.TagTypesOnDisk;
             duration = file.Properties?.Duration ?? TimeSpan.Zero;
@@ -122,7 +169,7 @@ public sealed class TagEditor : ITagEditor
             if (effective.IsEmpty && unwanted == TagLib.TagTypes.None)
                 return new TagEditResult(new TagFields(), effective, (long)onDisk, Written: false);
 
-            untouched = Untouched(file, onDisk, effective);
+            untouched = Untouched(file, onDisk, effective, frames: raw is null);
 
             // An MP3 with only the old ID3v1 tag can't hold long or non-Latin text: it gets an ID3v2 tag with the same values.
             var id3Container = file is TagLib.Mpeg.AudioFile or TagLib.Aac.File or TagLib.Riff.File or TagLib.Aiff.File;
@@ -130,7 +177,18 @@ public sealed class TagEditor : ITagEditor
                 && onDisk.HasFlag(TagLib.TagTypes.Id3v1) && file.GetTag(TagLib.TagTypes.Id3v1) is { } old)
                 old.CopyTo(id3, false);
 
+            // The extra fields go first: which comment frame is "the comment" is judged by the old one.
+            var mainComment = file.Tag.Comment;
+            if (effective.Texts is { } texts)
+                TagTexts.Write(file, texts, mainComment);
+            // TagLib# removes every comment frame when the comment is cleared: the others are set aside and put back.
+            var otherComments = effective.Comment is not null && file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag comments
+                ? comments.GetFrames<TagLib.Id3v2.CommentsFrame>().Where(f => !string.IsNullOrEmpty(f.Description)).ToList()
+                : [];
             Apply(file.Tag, effective);
+            if (otherComments.Count > 0 && file.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag kept3)
+                foreach (var comment in otherComments.Where(c => !kept3.GetFrames<TagLib.Id3v2.CommentsFrame>().Contains(c)))
+                    kept3.AddFrame(comment);
 
             if (restoreTagKinds is { } wanted)
             {
@@ -148,15 +206,24 @@ public sealed class TagEditor : ITagEditor
                     file.RemoveTags(extra);
             }
 
+            if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag saving)
+            {
+                if (raw is not null)
+                    TagTexts.KeepAsTheyWere(saving, raw, effective.Year is not null);
+                TagTexts.KeepUserUrls(saving, raw, effective.Texts ?? []);
+            }
             file.Save();
         }
 
+        var rawAfter = Frames(path);
         using (var written = Open(path, name))
         {
-            if (!Arrived(Fields(written.Tag), effective))
+            if (!Arrived(All(written, rawAfter), effective))
                 throw new TagEditException("This kind of file could not store the new details, so it was left as it was.");
             var kept = restoreTagKinds is { } wanted ? onDisk & (TagLib.TagTypes)wanted : onDisk;
-            var now = Untouched(written, kept, effective);
+            if (raw is not null && kept.HasFlag(TagLib.TagTypes.Id3v2))
+                CheckFrames(raw, rawAfter ?? [], effective);
+            var now = Untouched(written, kept, effective, frames: raw is null);
             foreach (var (key, value) in untouched)
             {
                 // Data of a tag kind an undo removes goes with it.
@@ -187,7 +254,8 @@ public sealed class TagEditor : ITagEditor
     private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data));
 
     /// <summary>Everything in the tags that the change must leave as it is.</summary>
-    private static Dictionary<string, string> Untouched(TagLib.File file, TagLib.TagTypes kinds, TagFields change)
+    /// <param name="frames">Compare ID3v2 frames as TagLib# sees them: only for a tag <see cref="RawId3"/> can't read.</param>
+    private static Dictionary<string, string> Untouched(TagLib.File file, TagLib.TagTypes kinds, TagFields change, bool frames)
     {
         var found = new Dictionary<string, string>(StringComparer.Ordinal);
         var tag = file.Tag;
@@ -219,8 +287,9 @@ public sealed class TagEditor : ITagEditor
         Field("disc", false, tag.Disc);
         Field("disc count", false, tag.DiscCount);
         Field("lyrics", false, tag.Lyrics);
-        Field("conductor", false, tag.Conductor);
-        Field("grouping", false, tag.Grouping);
+        var texts = new HashSet<string>(change.Texts?.Select(t => t.Id) ?? [], StringComparer.Ordinal);
+        Field("conductor", texts.Overlaps(["id3v2:TPE3", "xiph:CONDUCTOR", "asf:WM/Conductor"]), tag.Conductor);
+        Field("grouping", texts.Overlaps(["id3v2:TIT1", "xiph:GROUPING", "asf:WM/ContentGroupDescription", "apple:©grp"]), tag.Grouping);
         Field("tempo", false, tag.BeatsPerMinute);
         Field("track gain", false, tag.ReplayGainTrackGain);
         Field("track peak", false, tag.ReplayGainTrackPeak);
@@ -233,7 +302,7 @@ public sealed class TagEditor : ITagEditor
             Field("pictures", false, string.Join(',', (tag.Pictures ?? []).Select(p => Hash(p.Data.Data))));
 
         // Frames and fields TagLib has no property for (ratings, private data, custom text) are compared one by one.
-        if (kinds.HasFlag(TagLib.TagTypes.Id3v2) && file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
+        if (frames && kinds.HasFlag(TagLib.TagTypes.Id3v2) && file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
         {
             var changing = new HashSet<string>(StringComparer.Ordinal);
             void Frames(bool when, params string[] ids)
@@ -253,15 +322,14 @@ public sealed class TagEditor : ITagEditor
             Frames(change.Composers is not null, "TCOM");
             Frames(change.Copyright is not null, "TCOP");
             Frames(change.Pictures is not null, "APIC");
-            var number = 0;
+            var main = tag.Comment;
             foreach (var group in id3.GetFrames()
                          .Select(f => (Id: f.FrameId.ToString(), Frame: f))
-                         .Where(f => !changing.Contains(f.Id))
+                         .Where(f => !changing.Contains(f.Id) && !(TagTexts.IdOf(f.Frame, main) is { } id && texts.Contains(id)))
                          .GroupBy(f => f.Id))
             {
                 var contents = group.Select(f => Hash(f.Frame.Render(4).Data)).Order(StringComparer.Ordinal);
                 found[$"id3v2:{group.Key}"] = string.Join(',', contents);
-                number++;
             }
         }
 
@@ -285,6 +353,7 @@ public sealed class TagEditor : ITagEditor
             Keys(change.Composers is not null, "COMPOSER");
             Keys(change.Copyright is not null, "COPYRIGHT");
             Keys(change.Pictures is not null, "METADATA_BLOCK_PICTURE", "COVERART", "COVERARTMIME");
+            changing.UnionWith(texts.Where(t => t.StartsWith("xiph:", StringComparison.Ordinal)).Select(t => t[5..]));
             foreach (string key in xiph)
             {
                 // A picture may be rewritten in another form; the pictures are compared above.

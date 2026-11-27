@@ -12,6 +12,16 @@ public sealed record TagPicture(string Type, string MimeType, string Description
 }
 
 /// <summary>
+/// A text field without a property of its own (publisher, a web address, a custom or second comment). <see cref="Id"/> says
+/// which tag and field it is ("id3v2:TPUB", "id3v2:TXXX:description", "xiph:ORGANIZATION"); several values of one field
+/// are joined by <see cref="ValueSeparator"/>. An empty value removes the field.
+/// </summary>
+public sealed record TagText(string Id, string Value)
+{
+    public const char ValueSeparator = '\u001f';
+}
+
+/// <summary>
 /// A set of tag values: as a change, null means "leave it alone", an empty text, an empty list or 0 means "clear it".
 /// </summary>
 public sealed record TagFields
@@ -28,9 +38,14 @@ public sealed record TagFields
     public string? Copyright { get; init; }
     public TagPicture[]? Pictures { get; init; }
 
+    /// <summary>The other text fields. As values: all of them; as a change: only the ones listed are set.</summary>
+    public TagText[]? Texts { get; init; }
+
     [JsonIgnore]
     public bool IsEmpty => Title is null && Artists is null && AlbumArtists is null && Album is null && Genres is null && Year is null
-        && Track is null && Comment is null && Composers is null && Copyright is null && Pictures is null;
+        && Track is null && Comment is null && Composers is null && Copyright is null && Pictures is null && Texts is null;
+
+    public string TextOf(string id) => Texts?.FirstOrDefault(t => t.Id == id)?.Value ?? string.Empty;
 
     /// <summary>The fields of <paramref name="change"/> that differ from these (current) values.</summary>
     public TagFields Differences(TagFields change)
@@ -51,6 +66,7 @@ public sealed record TagFields
             Composers = List(Composers, change.Composers),
             Copyright = Text(Copyright, change.Copyright),
             Pictures = List(Pictures, change.Pictures),
+            Texts = change.Texts?.Where(t => t.Value != TextOf(t.Id)).ToArray() is { Length: > 0 } texts ? texts : null,
         };
     }
 
@@ -68,6 +84,7 @@ public sealed record TagFields
         Composers = change.Composers is null ? null : Composers ?? [],
         Copyright = change.Copyright is null ? null : Copyright ?? string.Empty,
         Pictures = change.Pictures is null ? null : Pictures ?? [],
+        Texts = change.Texts?.Select(t => new TagText(t.Id, TextOf(t.Id))).ToArray(),
     };
 }
 
