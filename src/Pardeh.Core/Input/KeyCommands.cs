@@ -157,7 +157,7 @@ public static class KeyCommandCatalog
         Add(KeyCmd.Back30, "Back 30 seconds");
         Add(KeyCmd.Forward30, "Forward 30 seconds");
         Add(KeyCmd.JumpToTime, "Jump to time");
-        Missing(KeyCmd.ShowPosition, "Show the position");
+        Add(KeyCmd.ShowPosition, "Show the position");
 
         Group("Audio");
         Add(KeyCmd.VolumeUp, "Volume up");

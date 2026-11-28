@@ -51,6 +51,15 @@ internal sealed partial class PlayerView
     /// </summary>
     internal bool RunKeyCommand(string command)
     {
+        var waitingForB = _player.LoopStart is not null && _player.LoopEnd is null;
+        AnswerBefore(command);
+        var ran = PerformKeyCommand(command);
+        AnswerAfter(command, ran, waitingForB);
+        return ran;
+    }
+
+    private bool PerformKeyCommand(string command)
+    {
         switch (command)
         {
             // ---- Playback ----
@@ -133,6 +142,8 @@ internal sealed partial class PlayerView
                 return Seek(-30);
             case KeyCmd.Forward30:
                 return Seek(30);
+            case KeyCmd.ShowPosition:
+                return _notices?.ShowPosition() == true;
             case KeyCmd.JumpToTime:
                 if (_player.CurrentMedia is null)
                     return false;
@@ -363,7 +374,7 @@ internal sealed partial class PlayerView
         }
         else
         {
-            _ = _player.SelectSubtitleTrackAsync(embedded[next - 1 - files.Count]);
+            _ = SelectSubtitleTrack(embedded[next - 1 - files.Count]);
         }
 
         return true;
@@ -382,13 +393,18 @@ internal sealed partial class PlayerView
                     return false;
                 AppSettings.Current.PlaylistBookmarks[number] = media.Source;
                 AppSettings.Current.Save();
+                NoticeBookmark(number, set: true);
                 return true;
             }
 
             if (command != KeyCmd.PlayBookmark(number))
                 continue;
             if (!AppSettings.Current.PlaylistBookmarks.TryGetValue(number, out var source))
+            {
+                NoticeBookmark(number, set: false);
                 return false;
+            }
+
             var items = _player.CurrentPlaylist.Items;
             for (var i = 0; i < items.Count; i++)
             {

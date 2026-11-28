@@ -137,6 +137,9 @@ sliders. The Pardeh logo can follow the colour too.
 - Volume levelling from ReplayGain tags; untagged files are measured in the background.
 - Sleep timer, A-B repeat, named markers on the seek bar, play speed, and resume for longer videos.
 - Video with embedded and external subtitles, subtitle delay and aspect ratio settings.
+- On-screen messages: after a command a short card over the picture shows the result, such as the volume, the time and time
+  left after a skip, the speed, or the audio or subtitle track. It works in every look and in full screen. Where it sits,
+  how long it stays and which groups show are in the settings.
 
 ### Online media
 

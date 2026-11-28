@@ -359,6 +359,9 @@ internal sealed class SkinCanvas : Control
     private bool _swipeable, _swiping, _vizSwipe, _vizSwiped;
     private double _swipeFrom, _swipeTo;
 
+    /// <summary>While a swipe on the picture is seeking: where it started and where it will land (seconds).</summary>
+    public (double From, double To)? SwipeAim => _swiping ? (_swipeFrom, _swipeTo) : null;
+
     /// <summary>Horizontal swipe on the stage: seeks (applied when the finger lifts). True while swiping.</summary>
     private bool SwipeSeek(Point p)
     {

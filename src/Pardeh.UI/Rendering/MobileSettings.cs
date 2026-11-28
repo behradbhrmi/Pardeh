@@ -926,6 +926,8 @@ internal sealed partial class MobileSettingsView : UserControl
                         () => Math.Max(0, Array.IndexOf(NetworkOptions.VideoHeightChoices, _settings.NetworkVideoHeight)),
                         i => { _settings.NetworkVideoHeight = NetworkOptions.VideoHeightChoices[i]; _settings.Save(); }),
                     Toggle("Reconnect after a drop", "Radio and files on a server are connected again", _settings.NetworkReconnect, v => { _settings.NetworkReconnect = v; _settings.Save(); })),
+                Heading("On screen"),
+                Card(Row("On-screen messages", "What shows over the player after a command", Chevron(), () => Open("On-screen messages", NoticesPage))),
                 Heading("Sound"),
                 Card(
                     Row("Equalizer", eq.Bypass ? "Off" : EqualizerSettings.Presets[eq.CurrentPreset].Name, Chevron(), () => Open("Equalizer", EqualizerPage)),

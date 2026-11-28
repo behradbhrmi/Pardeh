@@ -92,10 +92,10 @@ public sealed class VideoToolsTests : IDisposable
         player.NudgeSubtitleDelay(1);
         Assert.Equal(TimeSpan.FromMilliseconds(300), player.SubtitleDelay);
         Assert.Equal("+0.3 s", MediaPlayer.DescribeDelay(player.SubtitleDelay));
-        // 0.3 s later: at 10.25 s the line has not appeared yet; only the notice of the new delay shows.
-        Assert.Equal("[Subtitle delay +0.3 s]", player.CurrentSubtitle);
+        // 0.3 s later: at 10.25 s the line has not appeared yet (the new delay is an on-screen message, not a subtitle).
+        Assert.Null(player.CurrentSubtitle);
         engine.Position = TimeSpan.FromSeconds(10.35);
-        Assert.EndsWith("Line", player.CurrentSubtitle);
+        Assert.Equal("Line", player.CurrentSubtitle);
 
         player.Next();
         Assert.Equal(TimeSpan.Zero, player.SubtitleDelay);
