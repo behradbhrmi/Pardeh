@@ -25,12 +25,8 @@ public sealed partial class MediaPlayer
         var seconds = Math.Round(Math.Max(0, at ?? CurrentPosition), 1);
         var index = store.Add(media.Source, seconds, name);
         SetStatus($"{MarkerLabel(store.GetMarkers(media.Source)[index], index)} at {FormatTime(seconds)}");
-        MarkerAdded?.Invoke(this, index);
         return index;
     }
-
-    /// <summary>A marker was added to the playing track; the argument is its index.</summary>
-    public event EventHandler<int>? MarkerAdded;
 
     public void RenameMarker(int index, string name)
     {
@@ -52,7 +48,7 @@ public sealed partial class MediaPlayer
         // Leaving the repeated section on purpose ends the repeat; otherwise the loop would pull the position straight back.
         if (SectionLoopActive && (markers[index].Seconds < LoopStart - 0.5 || markers[index].Seconds >= LoopEnd))
             ClearSectionLoop();
-        SetPosition(markers[index].Seconds, SeekKind.Marker, label: MarkerLabel(markers[index], index));
+        CurrentPosition = markers[index].Seconds;
         SetStatus($"{MarkerLabel(markers[index], index)} ({FormatTime(markers[index].Seconds)})");
         return true;
     }

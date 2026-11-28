@@ -65,6 +65,10 @@ public sealed class KeymapTests : IDisposable
     [InlineData("F", KeyCmd.FullScreen)]
     [InlineData("M", KeyCmd.Mute)]
     [InlineData("Ctrl+Up", KeyCmd.VolumeUp)]
+    [InlineData("Up", KeyCmd.VolumeUp)] // the plain arrows: VLC keeps them for disc menus, which Pardeh has not
+    [InlineData("Down", KeyCmd.VolumeDown)]
+    [InlineData("Left", KeyCmd.Back5)]
+    [InlineData("Right", KeyCmd.Forward5)]
     [InlineData("Shift+Left", KeyCmd.BackExtraShort)]
     [InlineData("Alt+Right", KeyCmd.ForwardShort)]
     [InlineData("Ctrl+Left", KeyCmd.BackMedium)]

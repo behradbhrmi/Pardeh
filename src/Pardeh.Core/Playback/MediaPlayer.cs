@@ -70,9 +70,9 @@ public sealed partial class MediaPlayer : IDisposable
     /// <summary>Play › Captions and Subtitles: show them when there are any.</summary>
     public bool ShowSubtitles { get; set; } = true;
 
-    /// <summary>The subtitle text to show now, or null.</summary>
-    public string? CurrentSubtitle =>
-        ShowSubtitles && Subtitles is { } subtitles ? subtitles.TextAt(TimeSpan.FromSeconds(CurrentPosition) - SubtitleDelay) : null;
+    /// <summary>The subtitle text to show now (after a delay change also the new delay, for a moment), or null.</summary>
+    public string? CurrentSubtitle => WithDelayNotice(
+        ShowSubtitles && Subtitles is { } subtitles ? subtitles.TextAt(TimeSpan.FromSeconds(CurrentPosition) - SubtitleDelay) : null);
 
     /// <summary>Uses a subtitle file for the current item. False when it has no usable cues.</summary>
     public bool LoadSubtitles(string path)
@@ -252,22 +252,14 @@ public sealed partial class MediaPlayer : IDisposable
     public double CurrentPosition
     {
         get => _engine.IsOpen ? _engine.Position.TotalSeconds : 0;
-        set => SetPosition(value, SeekKind.Direct);
+        set
+        {
+            if (!_engine.IsOpen)
+                return;
+            _engine.Position = TimeSpan.FromSeconds(Math.Clamp(value, 0, Math.Max(0, Duration)));
+            Seeked?.Invoke(this, EventArgs.Empty);
+        }
     }
-
-    private void SetPosition(double seconds, SeekKind kind, double requested = 0, string? label = null)
-    {
-        if (!_engine.IsOpen)
-            return;
-        var from = CurrentPosition;
-        var to = Math.Clamp(seconds, 0, Math.Max(0, Duration));
-        _engine.Position = TimeSpan.FromSeconds(to);
-        LastSeek = new SeekInfo(kind, from, to, requested, label);
-        Seeked?.Invoke(this, EventArgs.Empty);
-    }
-
-    /// <summary>What the latest <see cref="Seeked"/> was: where from, where to, and why.</summary>
-    public SeekInfo LastSeek { get; private set; }
 
     /// <summary>Raised after the position was set directly (a seek, a skip, a scan step), so that mirrors such as the Android media session can follow.</summary>
     public event EventHandler? Seeked;
@@ -291,7 +283,7 @@ public sealed partial class MediaPlayer : IDisposable
     {
         if (!_engine.IsOpen)
             return;
-        SetPosition(ClampSeek(CurrentPosition, seconds, Duration), SeekKind.Relative, seconds);
+        CurrentPosition = ClampSeek(CurrentPosition, seconds, Duration);
     }
 
     /// <summary>Duration of the current media in seconds.</summary>
@@ -558,7 +550,7 @@ public sealed partial class MediaPlayer : IDisposable
             var target = CurrentPosition + delta;
             if (target <= 0)
             {
-                SetPosition(0, SeekKind.Silent);
+                CurrentPosition = 0;
                 EndScan();
             }
             else if (target >= Duration)
@@ -568,7 +560,7 @@ public sealed partial class MediaPlayer : IDisposable
             }
             else
             {
-                SetPosition(target, SeekKind.Silent);
+                CurrentPosition = target;
             }
         }
     }
@@ -608,7 +600,6 @@ public sealed partial class MediaPlayer : IDisposable
     {
         CurrentMedia = item;
         SubtitleDelay = TimeSpan.Zero;
-        ResumedAt = null;
         if (LoopStart is not null || LoopEnd is not null)
         {
             LoopStart = LoopEnd = null; // a section belongs to one track
@@ -681,6 +672,7 @@ public sealed partial class MediaPlayer : IDisposable
         }
 
         ApplyPreferredAudio();
+        _resumedAt = null;
         if (play)
             ResumeVideo(item);
         CurrentMediaChanged?.Invoke(this, EventArgs.Empty);
@@ -701,7 +693,7 @@ public sealed partial class MediaPlayer : IDisposable
             _engine.Position = TimeSpan.FromSeconds(startAt);
         _engine.Play();
         SetPlayState(PlayState.Playing);
-        SetStatus(ResumedAt is { } resumed ? $"Playing (resumed at {FormatTime(resumed)})" : "Playing");
+        SetStatus(_resumedAt is { } resumed ? $"Playing (resumed at {FormatTime(resumed)})" : "Playing");
     }
 
     /// <summary>
@@ -822,17 +814,8 @@ public sealed partial class MediaPlayer : IDisposable
         OpenStateChanged?.Invoke(this, state);
     }
 
-    /// <summary>
-    /// Writes the head's own message ("Picture saved to …") on the status line, and raises <see cref="Announced"/> so that it
-    /// can also be shown over the picture (the same text twice in a row is raised both times).
-    /// </summary>
-    public void Announce(string message)
-    {
-        SetStatus(message);
-        Announced?.Invoke(this, message);
-    }
-
-    public event EventHandler<string>? Announced;
+    /// <summary>Writes the head's own message ("Picture saved to …") on the status line.</summary>
+    public void Announce(string message) => SetStatus(message);
 
     private void SetStatus(string status)
     {

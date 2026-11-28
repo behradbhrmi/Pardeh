@@ -156,6 +156,14 @@ internal static partial class PhoneSkin
             });
         }
 
+        // The PC look's equalizer key opens and closes a drawer, so closed it is grey, like shuffle and repeat when off.
+        files["eqkey_off.png"] = Png(44, 44, g =>
+        {
+            HitBox(g, 44);
+            MetalKey(g, new Rect(3.5, 5.5, 37, 33), 7, false);
+            StrokeIcon(g, Color.Parse("#C5D0E4"), EqBarsPath, 22, 22, 1.15, 2.6);
+        });
+
         // Progress and volume: a sunk capsule and an amber fill (end caps kept by borderSize), a round amber thumb.
         files["seek_track.png"] = Png(24, 30, g =>
         {

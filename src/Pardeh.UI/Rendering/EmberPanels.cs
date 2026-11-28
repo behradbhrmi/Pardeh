@@ -31,6 +31,12 @@ internal interface IEmberHost
 
     /// <summary>Asks for a line of text (a playlist name); null when cancelled.</summary>
     Task<string?> Ask(string question, string initial);
+
+    /// <summary>
+    /// A panel's edge was dragged to a width in skin pixels, or double-clicked (null: the automatic width).
+    /// <paramref name="done"/>: the drag ended, so the width is worth keeping.
+    /// </summary>
+    void ResizePanel(bool queue, double? width, bool done);
 }
 
 /// <summary>Shared look of Ember's panels (after the VLC Redesign by Juxtopposed, CC BY 4.0).</summary>
@@ -177,6 +183,17 @@ internal static class EmberStyle
         return scope;
     }
 
+    /// <summary>Puts a drag handle on a panel's inner edge: its right edge, or its left one for the queue.</summary>
+    public static Control Resizable(Control panel, Control content, IEmberHost host, bool queue)
+    {
+        var grip = new EdgeGrip(leftEdge: queue, Accent, () => panel.Parent as Visual, () => panel.Width,
+            (width, done) => host.ResizePanel(queue, width, done))
+        {
+            HorizontalAlignment = queue ? HorizontalAlignment.Left : HorizontalAlignment.Right,
+        };
+        return new Grid { Children = { content, grip } };
+    }
+
     public static ScrollViewer Scroll(Control content) =>
         new() { Content = content, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
 }
@@ -229,7 +246,7 @@ internal sealed class EmberLibraryPanel : UserControl
 
         var top = new StackPanel { Margin = new Thickness(18, 12, 18, 0), Children = { header, tools, new Border { Height = 1, Background = EmberStyle.Line, Margin = new Thickness(0, 6, 0, 10) }, _search } };
         DockPanel.SetDock(top, Dock.Top);
-        Content = EmberStyle.Wrap(new DockPanel { Children = { top, new ScrollViewer { Content = _list, Margin = new Thickness(18, 0, 10, 12), Padding = new Thickness(0, 0, 8, 0), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled } } }, card: false);
+        Content = EmberStyle.Resizable(this, EmberStyle.Wrap(new DockPanel { Children = { top, new ScrollViewer { Content = _list, Margin = new Thickness(18, 0, 10, 12), Padding = new Thickness(0, 0, 8, 0), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled } } }, card: false), host, queue: false);
         Open(page, remember: false);
     }
 
@@ -534,7 +551,7 @@ internal sealed class EmberQueuePanel : UserControl
         }
 
         DockPanel.SetDock(header, Dock.Top);
-        Content = EmberStyle.Wrap(new DockPanel { Children = { header, _page } }, card: true);
+        Content = EmberStyle.Resizable(this, EmberStyle.Wrap(new DockPanel { Children = { header, _page } }, card: true), host, queue: true);
         _host.Player.CurrentPlaylist.Changed += (_, _) => Refresh();
         _host.Player.CurrentMediaChanged += (_, _) => Refresh();
         Show("queue");

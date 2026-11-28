@@ -40,6 +40,15 @@ internal sealed class SkinCanvas : Control
     /// <summary>A double-click in full screen (the window leaves full screen).</summary>
     public event EventHandler? FullScreenExitRequested;
 
+    /// <summary>A double-click on the video or visualization (the window goes full screen).</summary>
+    public event EventHandler? FullScreenEnterRequested;
+
+    /// <summary>
+    /// A left press on the video or visualization. It moves the window only once the pointer travels: a move started at
+    /// once would swallow the second click of a double-click.
+    /// </summary>
+    public event EventHandler<PointerPressedEventArgs>? PicturePressed;
+
     private static bool _firstRender;
 
     public override void Render(DrawingContext context)
@@ -111,9 +120,17 @@ internal sealed class SkinCanvas : Control
             return;
         if (FullScreen)
         {
-            // The control bar takes its own clicks; a double-click on the picture leaves full screen.
+            // A right click opens the menu; otherwise the control bar takes its own clicks, and a double-click on the
+            // picture leaves full screen.
             var at = e.GetPosition(this);
-            if (Controls.Press(at, View.Session.Player))
+            if (e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+            {
+                Controls.Activity();
+                ContextRequestedOnSkin?.Invoke(this, e);
+            }
+            else if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                Controls.Activity();
+            else if (Controls.Press(at, View.Session.Player))
                 e.Pointer.Capture(this);
             else if (e.ClickCount == 2)
                 FullScreenExitRequested?.Invoke(this, EventArgs.Empty);
@@ -145,6 +162,16 @@ internal sealed class SkinCanvas : Control
 
         var target = Interactive(hit);
         BeginTouch(e, p, target);
+        // The video or visualization, where the skin gives it nothing to do: a double-click goes full screen.
+        if (target is null && hit is VideoElement or EffectsElement && e.Pointer.Type == PointerType.Mouse)
+        {
+            if (e.ClickCount == 2)
+                FullScreenEnterRequested?.Invoke(this, EventArgs.Empty);
+            else if (e.ClickCount == 1)
+                PicturePressed?.Invoke(this, e);
+            return;
+        }
+
         if (target is null)
         {
             // Full mode's own bezel (drawn without a hit-testable element, the title bar hidden) must drag too, so a press that lands on
@@ -331,9 +358,6 @@ internal sealed class SkinCanvas : Control
 
     private bool _swipeable, _swiping, _vizSwipe, _vizSwiped;
     private double _swipeFrom, _swipeTo;
-
-    /// <summary>While a swipe on the picture is seeking: where it started and where it will land (seconds).</summary>
-    public (double From, double To)? SwipeAim => _swiping ? (_swipeFrom, _swipeTo) : null;
 
     /// <summary>Horizontal swipe on the stage: seeks (applied when the finger lifts). True while swiping.</summary>
     private bool SwipeSeek(Point p)

@@ -545,12 +545,12 @@ internal static class TenSkin
 
               <!-- The list pane. -->
               <SUBVIEW id="svList" left="{{LeftW}}" top="0" width="{{ListW}}" height="{{BodyH}}" backgroundImage="list_bg.png" resizeBackgroundImage="true" horizontalAlignment="right" verticalAlignment="stretch">
-                <PLAYLIST id="ipl" left="4" top="4" width="{{ListW - 8}}" height="{{BodyH - 30}}" transparentBackground="true" foregroundColor="#FFFFFF" itemPlayingColor="#FFE38A" itemSelectedBackgroundColor="#2F5CC5" verticalAlignment="stretch"/>
-                <TEXT id="listHint" left="14" top="22" width="{{ListW - 28}}" justification="center" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF"
+                <PLAYLIST id="ipl" left="4" top="4" width="{{ListW - 8}}" height="{{BodyH - 30}}" transparentBackground="true" foregroundColor="#FFFFFF" itemPlayingColor="#FFE38A" itemSelectedBackgroundColor="#2F5CC5" horizontalAlignment="stretch" verticalAlignment="stretch"/>
+                <TEXT id="listHint" left="14" top="22" width="{{ListW - 28}}" justification="center" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF" horizontalAlignment="stretch"
                     visible="wmpprop:player.currentPlaylist.count == 0" value="Drag items here to build"/>
-                <TEXT id="listHint2" left="14" top="36" width="{{ListW - 28}}" justification="center" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF"
+                <TEXT id="listHint2" left="14" top="36" width="{{ListW - 28}}" justification="center" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF" horizontalAlignment="stretch"
                     visible="wmpprop:player.currentPlaylist.count == 0" value="a list of items to play."/>
-                <TEXT id="listTotal" left="8" top="{{BodyH - 20}}" width="{{ListW - 16}}" justification="right" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF" verticalAlignment="bottom"
+                <TEXT id="listTotal" left="8" top="{{BodyH - 20}}" width="{{ListW - 16}}" justification="right" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF" horizontalAlignment="stretch" verticalAlignment="bottom"
                     value="wmpprop:'Total Time: ' + PlaylistTotal()"/>
               </SUBVIEW>
             </SUBVIEW>
@@ -629,6 +629,15 @@ internal static class TenSkin
 
         function OnClose() {
             theme.savePreference("Pane", g_pane == "skins" ? "now" : g_pane);
+        }
+
+        // The list pane's width (the host's drag handle on its left edge): Now Playing and the library take what is left.
+        function SetListWidth(width) {
+            var change = width - svList.width;
+            if (change == 0) return;
+            svList.width = width;
+            paneNow.width = paneNow.width - change;
+            paneLibrary.width = paneLibrary.width - change;
         }
 
         // Pages (Settings › Pages): hide unticked tabs and close the gaps.

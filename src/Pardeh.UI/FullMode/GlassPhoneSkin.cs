@@ -588,7 +588,7 @@ internal static partial class PhoneSkin
                   <BUTTON id="bAdd" left="16" top="8" image="g_addpl.png" hoverImage="g_addpl.png" downImage="g_addpl_down.png" onClick="pardeh.command('libraryaddfiles');" upToolTip="Add to playlist"/>
                   <BUTTON id="bViz" left="90" top="8" image="g_viz.png" hoverImage="g_viz.png" downImage="g_viz_down.png" onClick="ToggleViz();" upToolTip="Visualization"/>
                   <EQBARS id="eqViz" left="142.5" top="13" width="47" height="19" bars="7" barStyle="segments" segments="5" segmentHeight="3" segmentGap="1" gap="2" rest="0.2" palette="glass" colors="#35C6FF;#35C6FF;#9CEBFF"/>
-                  <BUTTON id="bRepeatV" left="16" top="8" visible="false" image="g_repeat.png" hoverImage="g_repeat.png" downImage="g_repeat_down.png" onClick="player.settings.setMode('loop', !player.settings.getMode('loop'));" upToolTip="Repeat"/>
+                  <REPEATBUTTON id="bRepeatV" left="16" top="8" visible="false" image="g_repeat.png" hoverImage="g_repeat.png" downImage="g_repeat_down.png" upToolTip="Repeat"/>
                   <BUTTON id="bCC" left="100" top="8" visible="false" image="g_cc.png" hoverImage="g_cc.png" downImage="g_cc_down.png" onClick="pardeh.command('quickpanel','subtitles');" upToolTip="Subtitles"/>
                   <BUTTON id="bAspect" left="190" top="8" visible="false" image="g_aspect.png" hoverImage="g_aspect.png" downImage="g_aspect_down.png" onClick="pardeh.command('quickpanel','video');" upToolTip="Aspect"/>
                   <BUTTON id="bFull" left="260" top="8" image="g_full.png" hoverImage="g_full.png" downImage="g_full_down.png" onClick="pardeh.command('fullscreen');" upToolTip="Full screen"/>
@@ -668,6 +668,11 @@ internal static partial class PhoneSkin
         function ToggleList() { if (g_lyr) { g_lyr = false; g_list = true; } else g_list = !g_list; Relayout(); }
         // The Lyrics button: the lyrics replace the cover (portrait) or the playlist card (landscape); the visualization and the lyrics exclude each other.
         function ToggleLyrics() { g_lyr = !g_lyr; if (g_lyr) g_viz = false; Relayout(); }
+        // The host reports what is open or in effect: Subtitles stays lit while they show, Aspect while its panel is open.
+        function OnPanels(page, audio, subtitles, settings, queue, video) {
+            bCC.down = subtitles;
+            bAspect.down = video;
+        }
         // The speaker button: a tap opens the volume popup above it (anchored at its centre top), a long press toggles mute.
         function VolPopup() {
             pardeh.command("volumepopup", svContent.left + svPill.left + bMute.left + 15, svContent.top + svPill.top + bMute.top);

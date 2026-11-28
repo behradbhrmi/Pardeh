@@ -48,9 +48,11 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     public PlayerView(StartupOptions startup)
     {
         _startup = startup;
-        _scaler = new LayoutTransformControl { Child = new Panel { Children = { _canvas, _overlay, _noticeLayer } } };
+        _scaler = new LayoutTransformControl { Child = new Panel { Children = { _canvas, _overlay } } };
         _canvas.FullScreenExitRequested += (_, _) => SetFullScreen(false);
         _canvas.Controls.ExitRequested += () => SetFullScreen(false);
+        _canvas.FullScreenEnterRequested += (_, _) => SetFullScreen(true);
+        _canvas.PicturePressed += (_, e) => MoveWindowOnDrag(e);
         if (OperatingSystem.IsAndroid())
             InstallPageSwipe();
         _frame.Command += OnFrameCommand;
@@ -118,7 +120,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 Dispatcher.UIThread.Post(_player.SaveVideoPosition);
         };
         _player.ReplayGain = Enum.TryParse<Pardeh.Core.Playback.ReplayGainMode>(AppSettings.Current.ReplayGain, true, out var levelling) ? levelling : Pardeh.Core.Playback.ReplayGainMode.Off;
-        StartNotices();
         _canvas.BackgroundPressed += (_, e) => OnSurfacePressed(e);
         _canvas.PointerMoved += OnSurfaceMoved;
         _canvas.PointerReleased += (_, _) => _pendingMove = null;
@@ -273,7 +274,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             _library.AddFolder(devFolder);
         RestoreDesktopLyrics();
         StartupMarks.Mark("PlayerView.Start end (full mode loaded)");
-        HushNotices(1.5);
         _lastTick = _clock.Elapsed;
         _timer.Start();
     }
@@ -630,6 +630,102 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         return true;
     }
 
+    private const string NothingLit = "'', false, false, false, false, false";
+    private string _panelsLit = NothingLit;
+
+    /// <summary>
+    /// Tells a built-in look (one with an OnPanels function) which of its buttons to light: those whose panel is open, and
+    /// those whose setting is on (subtitles showing; a changed speed, a sleep timer or an A-B repeat for the playback
+    /// settings).
+    /// </summary>
+    private void UpdatePanelButtons()
+    {
+        if (!IsFullMode || _session?.CurrentView is not { } view)
+            return;
+        var page = _libraryPanel is { IsVisible: true } ? _libraryPanel.Page.Split('/')[0] : string.Empty;
+        var tab = _quickPanel is { IsVisible: true } ? _quickPanel.Tab : null;
+        var subtitles = tab == "subtitles" || _player.ShowSubtitles && _player.Subtitles is not null;
+        var settings = tab is "playback" or "video" || Math.Abs(_player.Rate - 1) > 1e-6 || _player.SleepTimerActive || _player.LoopStart is not null;
+        static string Flag(bool on) => on ? "true" : "false";
+        var lit = $"'{page}', {Flag(tab == "audio")}, {Flag(subtitles)}, {Flag(settings)}, {Flag(_queuePanel is { IsVisible: true })}, {Flag(tab == "video")}";
+        if (lit == _panelsLit)
+            return;
+        _panelsLit = lit;
+        view.Script.Execute($"if (typeof OnPanels == 'function') OnPanels({lit});", "panels");
+    }
+
+    // ---- Pardeh's other PC looks: the playlist column's width ------------------------------------
+
+    private Rendering.EdgeGrip? _listGrip;
+    private SkinView? _listView;
+    private Pardeh.Skinning.Runtime.Elements.SkinElement? _list;
+    private double _listUsualWidth;
+
+    /// <summary>Per tick: the column keeps the width the user chose, and its left edge has a handle while it shows.</summary>
+    private void UpdateListGrip()
+    {
+        var view = Shell is not null && IsFullMode ? _session?.CurrentView : null;
+        if (!ReferenceEquals(view, _listView))
+        {
+            _listView = view;
+            _list = view is null ? null : SideList.Find(view);
+            _listUsualWidth = _list?.Width ?? 0;
+        }
+
+        if (view is null || _list is not { } list || !SideList.IsShown(list))
+        {
+            if (_listGrip is not null)
+                _listGrip.IsVisible = false;
+            return;
+        }
+
+        if (AppSettings.Current.SideListWidths.TryGetValue(CurrentFullModeKey(), out var chosen))
+            SideList.Set(view, list, chosen, _listUsualWidth);
+        if (_listGrip is null)
+        {
+            _listGrip = new Rendering.EdgeGrip(leftEdge: true, new SolidColorBrush(Color.FromArgb(190, 255, 255, 255)), () => _overlay,
+                () => _list?.Width ?? 0, ResizeList)
+            {
+                ZIndex = -1, // under any card or sheet laid over the skin
+            };
+            _overlay.Children.Add(_listGrip);
+        }
+
+        var (x, y) = list.AbsolutePosition;
+        Canvas.SetLeft(_listGrip, x - Math.Floor(Rendering.EdgeGrip.Thickness / 2));
+        Canvas.SetTop(_listGrip, y);
+        _listGrip.Height = list.Height;
+        _listGrip.IsVisible = true;
+    }
+
+    private void ResizeList(double? width, bool done)
+    {
+        if (_listView is not { } view || _list is not { } list)
+            return;
+        var widths = AppSettings.Current.SideListWidths;
+        var look = CurrentFullModeKey();
+        SideList.Set(view, list, width ?? _listUsualWidth, _listUsualWidth);
+        if (width is null)
+            widths.Remove(look);
+        else
+            widths[look] = list.Width;
+        if (done)
+            AppSettings.Current.Save();
+    }
+
+    /// <summary>A side panel's edge was dragged to a width (skin pixels; null: back to the automatic width).</summary>
+    void Rendering.IEmberHost.ResizePanel(bool queue, double? width, bool done)
+    {
+        var settings = AppSettings.Current;
+        if (queue)
+            settings.EmberQueueWidth = Math.Round(width ?? 0);
+        else
+            settings.EmberSideWidth = Math.Round(width ?? 0);
+        PlaceEmberPanels();
+        if (done)
+            settings.Save();
+    }
+
     /// <summary>Ember's metrics (skin pixels): the side panel at the stage's left, the cards at its lower right.</summary>
     private void PlaceEmberPanels()
     {
@@ -638,7 +734,10 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         var sideWidth = 0.0;
         if (_libraryPanel is { IsVisible: true })
         {
-            sideWidth = Math.Round(Math.Min(380, Math.Max(260, root.Width * 0.36)));
+            // A width the user chose still leaves the stage some room.
+            sideWidth = AppSettings.Current.EmberSideWidth is > 0 and var chosen
+                ? Math.Round(Math.Clamp(chosen, 260, Math.Max(260, root.Width - 56 - 14 - 220)))
+                : Math.Round(Math.Min(380, Math.Max(260, root.Width * 0.36)));
             Canvas.SetLeft(_libraryPanel, 56);
             Canvas.SetTop(_libraryPanel, 40);
             _libraryPanel.Width = sideWidth;
@@ -654,7 +753,9 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
 
         if (_queuePanel is { IsVisible: true })
         {
-            var width = Math.Min(400, root.Width - 120);
+            var width = AppSettings.Current.EmberQueueWidth is > 0 and var chosen
+                ? Math.Clamp(chosen, 300, Math.Max(300, root.Width - 120))
+                : Math.Min(400, root.Width - 120);
             var height = Math.Max(120, root.Height - 40 - 62 - 20);
             Canvas.SetLeft(_queuePanel, root.Width - 14 - width - 10);
             Canvas.SetTop(_queuePanel, 50);
@@ -760,6 +861,8 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         PlaceVizPicker();
         PlaceToolsSheet();
         PlaceEmberPanels();
+        UpdatePanelButtons();
+        UpdateListGrip();
         UpdatePhoneLibrary();
         if (_canvas.SettingsHost is not { Width: > 0, Height: > 0 } area || _session is null)
         {
@@ -883,7 +986,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
 
         List<(string Section, string Name, Func<string> Value, Action Change)> all =
         [
-            OnOff("Player", "On-screen messages", () => s.OnScreenMessages, v => s.OnScreenMessages = v),
             ("Player", "Start in", () => startNames[Math.Max(0, Array.IndexOf(starts, s.StartMode))],
                 () => { s.StartMode = starts[(Array.IndexOf(starts, s.StartMode) + 1) % starts.Length]; s.Save(); }),
             OnOff("Player", "One Pardeh at a time (open files in it)", () => s.SingleInstance, v => s.SingleInstance = v),
@@ -1089,7 +1191,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     {
         CloseQuickPanel();
         _sideWidthShown = 0; // the new skin starts with its stage in place
-        HushNotices(1);
+        _panelsLit = NothingLit;
         _session?.Dispose();
         // Phone layouts: touch-sized list rows in the library, queue and list panes.
         var phone = PhoneSkin.IsPhoneSource(package.SourcePath);
@@ -1128,7 +1230,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
 
         _session?.Tick(elapsed);
         _lyrics.Tick();
-        UpdateNotices(now);
         if (!AppVisibility.Foreground)
             return; // in the background: no drawing, no animation
         if (_fullScreen)
@@ -1159,7 +1260,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         if (_snapshotTaken || Environment.GetEnvironmentVariable("PARDEH_SNAPSHOT") is not { Length: > 0 } path)
             return;
         var delay = double.TryParse(Environment.GetEnvironmentVariable("PARDEH_SNAPSHOT_DELAY"), System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 3;
-        if (now.TotalSeconds < delay || AwaitingSnapshotKeys(now) || _session?.CurrentView is not { } view)
+        if (now.TotalSeconds < delay || _session?.CurrentView is not { } view)
             return;
 
         _snapshotTaken = true;
@@ -1202,7 +1303,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         {
             using var context = bitmap.CreateDrawingContext();
             _canvas.Render(context);
-            _noticeLayer.Render(context);
         }
         bitmap.Save(path, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         Log($"Snapshot {size.Width}x{size.Height} saved to {path}; window at {Position} size {ClientSize}, state {_player.PlayState}, video {_player.HasVideo}");
@@ -1330,24 +1430,33 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         if (framed == _framed)
             return;
         _framed = framed;
+        ShowFrame(framed && !_fullScreen);
         if (framed)
-        {
-            Content = null;
-            _frame.Child = _scaler;
-            Content = _frame;
             Platform.ClearWindowShape(Top);
-        }
         else
-        {
-            Content = null;
-            _frame.Child = null;
-            Content = _scaler;
             _shapedVersion = -1;
-        }
 
         UpdateCorners();
         if (_session?.CurrentView is { } view)
             SizeToView(view.Root.Width, view.Root.Height);
+    }
+
+    /// <summary>Puts the caption and menu bar around the skin, or takes them away.</summary>
+    private void ShowFrame(bool shown)
+    {
+        if (shown == ReferenceEquals(Content, _frame))
+            return;
+        Content = null;
+        if (shown)
+        {
+            _frame.Child = _scaler;
+            Content = _frame;
+        }
+        else
+        {
+            _frame.Child = null;
+            Content = _scaler;
+        }
     }
 
     private void OnFrameCommand(string command, PointerPressedEventArgs? e)
@@ -1371,6 +1480,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     // ---- Full screen --------------------------------------------------------------------------
 
     private bool _fullScreen;
+    private (SkinView View, double Width, double Height)? _sizeBeforeFullScreen;
     private static readonly Cursor HiddenCursor = new(StandardCursorType.None);
 
     /// <summary>Video / visualization over the whole screen (Now Playing's "View full screen"). Esc or double-click leaves.</summary>
@@ -1380,8 +1490,16 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             return;
         _fullScreen = on;
         _canvas.FullScreen = on;
+        _pendingMove = null;
+        // Desktop: the panels and pages laid over the skin are placed for the window, not for the whole screen.
+        if (Shell is not null)
+            _overlay.IsVisible = !on;
+        // The picture has the whole screen: no caption or menu bar over it.
+        CloseBarMenu();
         if (on)
         {
+            _sizeBeforeFullScreen = _session?.CurrentView is { } before ? (before, before.Root.Width, before.Root.Height) : null;
+            ShowFrame(false);
             Platform.ClearWindowShape(Top);
             _scaler.LayoutTransform = null;
             WindowState = WindowState.FullScreen;
@@ -1390,7 +1508,15 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         else
         {
             WindowState = WindowState.Normal;
+            // Only once the window is back: around a full screen window, the frame would hand the skin that size.
+            ShowFrame(_framed);
             _canvas.Cursor = Cursor.Default;
+            if (_sizeBeforeFullScreen is var (view, width, height) && ReferenceEquals(view, _session?.CurrentView))
+            {
+                view.Root.Width = width;
+                view.Root.Height = height;
+            }
+
             ApplyScale();
         }
 
@@ -1566,7 +1692,8 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     public void OnShellResized(bool byUser)
     {
         // A user resize (BeginResizeDrag) changes the window; push the new size to the skin.
-        if (_session?.CurrentView is { } view && byUser)
+        // On the way to full screen, Windows reports sizes in between as if the user chose them.
+        if (_session?.CurrentView is { } view && byUser && !_fullScreen)
         {
             var width = (ClientSize.Width - ChromeSize.Width) / LayoutScale;
             var height = (ClientSize.Height - ChromeSize.Height) / LayoutScale;
@@ -1685,9 +1812,21 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             items.InsertRange(items.IndexOf(skinsMenu),
             [
                 Item("Open URL...", OpenUrl, KeyCmd.OpenUrl), RecentAddressMenu(), new Separator(),
-                PlaybackToolsMenu(), SubtitlesMenu(), LyricsMenu(), new Separator(),
+                Item(_fullScreen ? "Exit Full Screen" : "Full Screen", () => SetFullScreen(!_fullScreen), KeyCmd.FullScreen),
+                PlaybackToolsMenu(), AudioTracksMenu(), AspectRatioMenu(), SubtitlesMenu(), LyricsMenu(), new Separator(),
                 WindowStyleMenu(), Item("Options...", () => _ = ShowOptions(), KeyCmd.Preferences),
             ]);
+        }
+
+        // The window's style and the skin can't change under the full screen.
+        if (_fullScreen && !OperatingSystem.IsAndroid())
+        {
+            items.RemoveAll(i => ReferenceEquals(i, skinsMenu) || i is MenuItem { Header: "Window Style" });
+            for (var i = items.Count - 1; i > 0; i--)
+            {
+                if (items[i] is Separator && items[i - 1] is Separator)
+                    items.RemoveAt(i);
+            }
         }
 
         var appItems = items.ToArray();
@@ -2370,7 +2509,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 Item("Shuffle", () => _player.Shuffle = !_player.Shuffle, KeyCmd.Shuffle, check: _player.Shuffle),
                 Item("Repeat", () => _player.Loop = !_player.Loop, KeyCmd.Repeat, check: _player.Loop),
                 new Separator(),
-                PlaySpeedMenu(),
                 PlaybackToolsMenu(),
                 .. OperatingSystem.IsAndroid() ? Array.Empty<object>() : [LyricsMenu()],
                 AudioTracksMenu(),
@@ -2420,7 +2558,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             var track = embeddedTrack;
             items.Add(Item("Embedded: " + track.Label, async () =>
             {
-                if (!await SelectSubtitleTrack(track))
+                if (!await _player.SelectSubtitleTrackAsync(track))
                     ShowMessage("No subtitles could be read from that track.");
             }, check: _player.EmbeddedSubtitle == track));
         }
@@ -2567,10 +2705,14 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         AppSettings.Current.Save();
     }
 
-    /// <summary>Play › Sleep Timer, A-B Repeat and Volume Levelling.</summary>
+    /// <summary>Play › Playback Tools: speed, jump to time, sleep timer, A-B repeat, sound settings and markers.</summary>
     internal MenuItem PlaybackToolsMenu()
     {
-        var items = new List<object>();
+        // Everything that changes how playback goes is here, so one place is enough (the right-click menu has no Play menu).
+        var speed = PlaySpeedMenu();
+        var jump = Item("Jump to Time...", () => _ = AskJumpToTime(), KeyCmd.JumpToTime);
+        jump.IsEnabled = _player.CurrentMedia is not null;
+        var items = new List<object> { speed, jump, new Separator() };
         var remaining = _player.SleepRemaining;
         var sleepHeader = _player.SleepAtEndOfTrack ? "Sleep Timer (end of track)" : remaining is { } left ? $"Sleep Timer ({Math.Ceiling(left.TotalMinutes):0} min left)" : "Sleep Timer";
         var sleep = new List<object>();
@@ -2607,6 +2749,17 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             AppSettings.Current.Gapless = _player.Gapless;
             AppSettings.Current.Save();
         }, check: _player.Gapless));
+        var sound = _player.Equalizer;
+        items.Add(Item("Crossfading", () => sound.CrossFade = !sound.CrossFade, check: sound.CrossFade));
+        items.Add(Item("Auto Volume Leveling", () => sound.AutoVolume = !sound.AutoVolume, check: sound.AutoVolume));
+        items.Add(Item("Bass and Width (SRS WOW)", () => sound.Enhanced = !sound.Enhanced, check: sound.Enhanced));
+        items.Add(new MenuItem
+        {
+            Header = "Quiet Mode",
+            ItemsSource = new[] { "Off", "Medium difference", "Little difference" }
+                .Select((name, mode) => (object)Item(name, () => sound.QuietMode = mode, check: sound.QuietMode == mode)).ToArray(),
+        });
+        items.Add(new Separator());
         items.Add(new MenuItem { Header = "Markers", ItemsSource = MarkerMenuItems() });
         items.Add(Item("Resume Videos Where Left", () =>
         {
@@ -2718,7 +2871,6 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             new Separator(),
             EnhancementsMenu(),
             new Separator(),
-            PlaySpeedMenu(),
             PlaybackToolsMenu(),
             AudioTracksMenu(),
             AspectRatioMenu(),

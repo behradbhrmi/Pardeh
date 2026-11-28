@@ -41,6 +41,9 @@ public static class BuiltInKeymaps
             { KeyCmd.SlowerFine, "[" },
 
             // ---- Seeking ----
+            // VLC keeps the plain arrows for disc menus; Pardeh has none, so they seek (and set the volume, below).
+            { KeyCmd.Back5, "Left" },
+            { KeyCmd.Forward5, "Right" },
             { KeyCmd.BackExtraShort, "Shift+Left" },
             { KeyCmd.ForwardExtraShort, "Shift+Right" },
             { KeyCmd.BackShort, "Alt+Left" },
@@ -53,8 +56,8 @@ public static class BuiltInKeymaps
             { KeyCmd.ShowPosition, "T" },
 
             // ---- Audio ----
-            { KeyCmd.VolumeUp, "Ctrl+Up", "VolumeUp" },
-            { KeyCmd.VolumeDown, "Ctrl+Down", "VolumeDown" },
+            { KeyCmd.VolumeUp, "Ctrl+Up", "Up", "VolumeUp" },
+            { KeyCmd.VolumeDown, "Ctrl+Down", "Down", "VolumeDown" },
             { KeyCmd.Mute, "M", "VolumeMute" },
             { KeyCmd.NextAudioTrack, "B" },
             { KeyCmd.AudioDevice, "Shift+A" },
@@ -109,10 +112,6 @@ public static class BuiltInKeymaps
             { "disc.nextTitle", "Shift+B" },
             { "disc.previousChapter", "Shift+P" },
             { "disc.nextChapter", "Shift+N" },
-            { "disc.navigateUp", "Up" },
-            { "disc.navigateDown", "Down" },
-            { "disc.navigateLeft", "Left" },
-            { "disc.navigateRight", "Right" },
             { "disc.activate", "Enter" },
 
             // ---- Files (the menu shortcuts) ----

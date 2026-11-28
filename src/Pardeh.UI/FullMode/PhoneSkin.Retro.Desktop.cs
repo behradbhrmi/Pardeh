@@ -311,7 +311,7 @@ internal static partial class PhoneSkin
         if (key == "winamp")
         {
             // The transport's last key opens the equalizer drawer.
-            Key("eq", "eqkey", 28, 3);
+            Key("eq", "eqkey_off", 28, 3);
             Key("eq_hover", "eqkey_down", 28, 3);
             Key("eq_down", "eqkey_down", 28, 3);
         }

@@ -602,11 +602,18 @@ internal sealed class FullModeDesigner
             if (g_pane != "now") { ShowPane("now"); svEq.visible = true; }
             else svEq.visible = !svEq.visible;
             theme.savePreference("Equalizer", svEq.visible ? "open" : "closed");
+            LightEqualizer();
+        }
+
+        // The equalizer button stays lit while the drawer is on screen.
+        function LightEqualizer() {
+            bEq.down = svEq.visible && g_pane == "now";
         }
 
         // The drawer is as it was left.
         function RestoreEqualizer() {
             if (theme.loadPreference("Equalizer") == "open") svEq.visible = true;
+            LightEqualizer();
         }
         """;
 
@@ -707,26 +714,26 @@ internal sealed class FullModeDesigner
 
                 <!-- Playlist panel: cover and details, the list, total time. -->
                 <SUBVIEW id="svList" left="{{StageW}}" top="0" width="{{ListW}}" height="{{ContentH}}" backgroundColor="{{d.Panel}}"{{listExtra}} horizontalAlignment="right" verticalAlignment="stretch">
-                  <SUBVIEW left="0" top="0" width="{{ListW}}" height="24" backgroundImage="list_header.png">
-                    <TEXT left="10" top="5" width="{{ListW - 20}}" fontType="{{f}}" fontSize="8" fontStyle="bold" foregroundColor="{{d.PanelText}}" value="Now Playing"/>
+                  <SUBVIEW left="0" top="0" width="{{ListW}}" height="24" backgroundImage="list_header.png" resizeBackgroundImage="true" horizontalAlignment="stretch">
+                    <TEXT left="10" top="5" width="{{ListW - 20}}" horizontalAlignment="stretch" fontType="{{f}}" fontSize="8" fontStyle="bold" foregroundColor="{{d.PanelText}}" value="Now Playing"/>
                   </SUBVIEW>
-        {{(retro is { Framed: true } ? $"""<SUBVIEW left="4" top="28" width="{ListW - 8}" height="96" backgroundImage="deck_card.png" sliceBorder="20"/>""" : string.Empty)}}
+        {{(retro is { Framed: true } ? $"""<SUBVIEW left="4" top="28" width="{ListW - 8}" height="96" backgroundImage="deck_card.png" sliceBorder="20" horizontalAlignment="stretch"/>""" : string.Empty)}}
                   <SUBVIEW left="10" top="34" width="84" height="84" backgroundImage="album_frame.png">
                     <SUBVIEW left="1" top="1" width="80" height="80" backgroundImage="WMPImage_AlbumArtLarge"/>
                   </SUBVIEW>
-                  <TEXT left="104" top="36" width="{{ListW - 112}}" height="30" fontType="{{f}}" fontSize="9" fontStyle="bold" foregroundColor="{{d.PanelText}}" wordWrap="true"
+                  <TEXT left="104" top="36" width="{{ListW - 112}}" horizontalAlignment="stretch" height="30" fontType="{{f}}" fontSize="9" fontStyle="bold" foregroundColor="{{d.PanelText}}" wordWrap="true"
                       value="wmpprop:player.currentMedia ? player.currentMedia.name : 'Nothing playing'"/>
-                  <TEXT left="104" top="70" width="{{ListW - 112}}" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelSub}}"
+                  <TEXT left="104" top="70" width="{{ListW - 112}}" horizontalAlignment="stretch" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelSub}}"
                       value="wmpprop:player.currentMedia ? player.currentMedia.getItemInfo('Author') : ''"/>
-                  <TEXT left="104" top="86" width="{{ListW - 112}}" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelAccent}}"
+                  <TEXT left="104" top="86" width="{{ListW - 112}}" horizontalAlignment="stretch" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelAccent}}"
                       value="wmpprop:player.currentMedia ? player.currentMedia.getItemInfo('Album') : ''"/>
-                  <TEXT left="104" top="102" width="{{ListW - 112}}" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelAccent}}"
+                  <TEXT left="104" top="102" width="{{ListW - 112}}" horizontalAlignment="stretch" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelAccent}}"
                       value="wmpprop:player.currentMedia ? player.currentMedia.getItemInfo('Genre') : ''"/>
-                  <SUBVIEW left="8" top="127" width="{{ListW - 16}}" height="1" backgroundColor="{{d.Rule}}"/>
+                  <SUBVIEW left="8" top="127" width="{{ListW - 16}}" height="1" backgroundColor="{{d.Rule}}" horizontalAlignment="stretch"/>
                   <PLAYLIST id="ipl" left="4" top="132" width="{{ListW - 8}}" height="{{ContentH - 132 - 30}}" backgroundColor="{{d.Panel}}" foregroundColor="{{d.PanelText}}"{{playlistExtra}}
-                      verticalAlignment="stretch"/>
-                  <SUBVIEW left="0" top="{{ContentH - 26}}" width="{{ListW}}" height="26" backgroundImage="list_footer.png" verticalAlignment="bottom">
-                    <TEXT left="10" top="6" width="{{ListW - 20}}" justification="right" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelAccent}}"
+                      horizontalAlignment="stretch" verticalAlignment="stretch"/>
+                  <SUBVIEW left="0" top="{{ContentH - 26}}" width="{{ListW}}" height="26" backgroundImage="list_footer.png" resizeBackgroundImage="true" horizontalAlignment="stretch" verticalAlignment="bottom">
+                    <TEXT left="10" top="6" width="{{ListW - 20}}" horizontalAlignment="stretch" justification="right" fontType="{{f}}" fontSize="8" foregroundColor="{{d.PanelAccent}}"
                         value="wmpprop:player.currentMedia ? 'Total time: ' + player.currentMedia.durationString : ''"/>
                   </SUBVIEW>
                 </SUBVIEW>
@@ -797,7 +804,7 @@ internal sealed class FullModeDesigner
                   thumbImage="volume_thumb.png" thumbHoverImage="volume_thumb_hover.png" borderSize="4" direction="horizontal"/>
               <SHUFFLEBUTTON left="300" top="38" image="shuffle.png" hoverImage="shuffle_hover.png" downImage="shuffle_down.png" upToolTip="Turn Shuffle On" downToolTip="Turn Shuffle Off"/>
               <REPEATBUTTON left="330" top="38" image="repeat.png" hoverImage="repeat_hover.png" downImage="repeat_down.png" upToolTip="Turn Repeat On" downToolTip="Turn Repeat Off"/>
-              <BUTTON left="360" top="38" image="eq.png" hoverImage="eq_hover.png" downImage="eq_down.png" upToolTip="{{(retro is { Equalizer: true } ? "Equalizer" : "Enhancements")}}" onClick="{{(retro is { Equalizer: true } ? "ToggleEqualizer();" : "pardeh.command('menu', 'view');")}}"/>
+              <BUTTON id="bEq" left="360" top="38" image="eq.png" hoverImage="eq_hover.png" downImage="eq_down.png" upToolTip="{{(retro is { Equalizer: true } ? "Equalizer" : "Enhancements")}}" onClick="{{(retro is { Equalizer: true } ? "ToggleEqualizer();" : "pardeh.command('menu', 'view');")}}"/>
             </SUBVIEW>
           </VIEW>
         </THEME>
@@ -820,6 +827,16 @@ internal sealed class FullModeDesigner
 
         function OnClose() {
             theme.savePreference("Pane", g_pane);
+        }
+
+        // The playlist panel's width (the host's drag handle on its left edge): the stage and what is under it take what is left.
+        function SetListWidth(width) {
+            var change = width - svList.width;
+            if (change == 0) return;
+            svList.width = width;
+            svStage.width = svStage.width - change;
+            svStatus.width = svStatus.width - change;
+            if (typeof svEq != "undefined") svEq.width = svEq.width - change;
         }
 
         // Pages (Settings › Pages): hide unticked tasks from the rail and close the gaps.
@@ -872,6 +889,7 @@ internal sealed class FullModeDesigner
                 eval(RAIL[key]).down = (key == name);
                 if (typeof RAIL_ON != "undefined") eval(RAIL[key] + "Label").foregroundColor = key == name ? RAIL_ON : RAIL_OFF;
             }
+            if (typeof LightEqualizer == "function") LightEqualizer();
         }
 
         function OnOpenState(state) {

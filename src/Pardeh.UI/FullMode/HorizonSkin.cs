@@ -554,26 +554,26 @@ internal static class HorizonSkin
                 <!-- Right column. -->
                 <SUBVIEW id="svList" left="{{CenterW}}" top="0" width="{{RightW - F}}" height="{{ColumnH}}" backgroundColor="#4A5C9A" horizontalAlignment="right" verticalAlignment="stretch">
                   <SUBVIEW left="0" top="0" width="2" height="{{ColumnH}}" backgroundImage="column_edge.png" backgroundTiled="true" verticalAlignment="stretch"/>
-                  <SUBVIEW left="2" top="0" width="{{RightW - F - 2}}" height="22" backgroundImage="column_header.png">
-                    <TEXT left="{{RightW - F - 104}}" top="4" width="96" justification="right" fontType="Tahoma" fontSize="8" fontStyle="bold" foregroundColor="#E8EEFA" value="▸ Now Playing"/>
+                  <SUBVIEW left="2" top="0" width="{{RightW - F - 2}}" height="22" backgroundImage="column_header.png" resizeBackgroundImage="true" horizontalAlignment="stretch">
+                    <TEXT left="{{RightW - F - 104}}" top="4" width="96" justification="right" horizontalAlignment="right" fontType="Tahoma" fontSize="8" fontStyle="bold" foregroundColor="#E8EEFA" value="▸ Now Playing"/>
                   </SUBVIEW>
-                  <TEXT left="10" top="28" width="{{RightW - F - 20}}" justification="right" fontType="Tahoma" fontSize="8" foregroundColor="#A4C1F4"
+                  <TEXT left="10" top="28" width="{{RightW - F - 20}}" justification="right" horizontalAlignment="stretch" fontType="Tahoma" fontSize="8" foregroundColor="#A4C1F4"
                       hoverForegroundColor="#FFFFFF" fontStyle="underline" value="Find Album Info" onClick="ShowPane('info');"/>
-                  <SUBVIEW left="{{(RightW - F - 82) / 2}}" top="46" width="82" height="82" backgroundImage="album_frame.png">
+                  <SUBVIEW left="{{(RightW - F - 82) / 2}}" top="46" width="82" height="82" backgroundImage="album_frame.png" horizontalAlignment="center">
                     <SUBVIEW left="0" top="0" width="80" height="80" backgroundImage="WMPImage_AlbumArtLarge"/>
                   </SUBVIEW>
-                  <TEXT left="8" top="134" width="{{RightW - F - 16}}" justification="center" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF"
+                  <TEXT left="8" top="134" width="{{RightW - F - 16}}" justification="center" horizontalAlignment="stretch" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF"
                       value="wmpprop:player.currentMedia ? player.currentMedia.name : 'Nothing playing'"/>
-                  <SUBVIEW left="4" top="152" width="{{RightW - F - 6}}" height="1" backgroundColor="#6276AD"/>
-                  <PLAYLIST id="ipl" left="4" top="156" width="{{RightW - F - 6}}" height="{{ColumnH - 156 - 62}}" backgroundColor="#4A5C9A" foregroundColor="#FFFFFF" verticalAlignment="stretch"/>
-                  <SUBVIEW left="2" top="{{ColumnH - 58}}" width="{{RightW - F - 2}}" height="26" backgroundImage="column_footer.png" verticalAlignment="bottom">
+                  <SUBVIEW left="4" top="152" width="{{RightW - F - 6}}" height="1" backgroundColor="#6276AD" horizontalAlignment="stretch"/>
+                  <PLAYLIST id="ipl" left="4" top="156" width="{{RightW - F - 6}}" height="{{ColumnH - 156 - 62}}" backgroundColor="#4A5C9A" foregroundColor="#FFFFFF" horizontalAlignment="stretch" verticalAlignment="stretch"/>
+                  <SUBVIEW left="2" top="{{ColumnH - 58}}" width="{{RightW - F - 2}}" height="26" backgroundImage="column_footer.png" resizeBackgroundImage="true" horizontalAlignment="stretch" verticalAlignment="bottom">
                     <BUTTON left="6" top="4" image="list_add.png" hoverImage="list_add_hover.png" upToolTip="Add to Now Playing" onClick="pardeh.command('menu', 'file');"/>
                     <BUTTON left="28" top="4" image="list_clear.png" hoverImage="list_clear_hover.png" upToolTip="Clear Now Playing" onClick="player.currentPlaylist.clear();"/>
-                    <TEXT left="54" top="6" width="{{RightW - F - 64}}" justification="right" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF"
+                    <TEXT left="54" top="6" width="{{RightW - F - 64}}" justification="right" horizontalAlignment="stretch" fontType="Tahoma" fontSize="8" foregroundColor="#FFFFFF"
                         value="wmpprop:player.currentMedia ? 'Total Time: ' + player.currentMedia.durationString : ''"/>
                   </SUBVIEW>
                   <!-- Stereo meter. -->
-                  <SUBVIEW left="2" top="{{ColumnH - 32}}" width="{{RightW - F - 2}}" height="32" backgroundImage="meter.png" verticalAlignment="bottom">
+                  <SUBVIEW left="2" top="{{ColumnH - 32}}" width="{{RightW - F - 2}}" height="32" backgroundImage="meter.png" resizeBackgroundImage="true" horizontalAlignment="stretch" verticalAlignment="bottom">
                     <TEXT left="10" top="10" width="54" fontType="Tahoma" fontSize="7" fontStyle="bold" foregroundColor="#00E676" value="STEREO"/>
                     <WMPEFFECTS id="meter" left="62" top="5" width="{{RightW - F - 74}}" height="22" visible="true"/>
                   </SUBVIEW>
@@ -658,6 +658,16 @@ internal static class HorizonSkin
 
         function OnClose() {
             theme.savePreference("Pane", g_pane);
+        }
+
+        // The right column's width (the host's drag handle on its left edge): the stage and its two rows take what is left.
+        function SetListWidth(width) {
+            var change = width - svList.width;
+            if (change == 0) return;
+            svList.width = width;
+            svStage.width = svStage.width - change;
+            svStatus.width = svStatus.width - change;
+            svSeek.width = svSeek.width - change;
         }
 
         // Pages (Settings › Pages): hide unticked tasks from the rail and close the gaps.

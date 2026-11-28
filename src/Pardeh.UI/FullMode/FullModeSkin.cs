@@ -368,10 +368,10 @@ internal static class FullModeSkin
                   <WMPEFFECTS id="vis" left="0" top="0" width="{{ContentW - 200}}" height="{{ContentH - 22}}" visible="true"/>
                 </SUBVIEW>
                 <SUBVIEW id="svList" left="{{ContentW - 200}}" top="0" width="200" height="{{ContentH - 22}}" backgroundColor="#394472" horizontalAlignment="right" verticalAlignment="stretch">
-                  <SUBVIEW left="0" top="0" width="200" height="22" backgroundColor="#6071BF"/>
-                  <TEXT left="8" top="4" width="186" height="16" foregroundColor="#FFFFFF" fontType="Tahoma" fontSize="8" fontStyle="bold"
+                  <SUBVIEW left="0" top="0" width="200" height="22" backgroundColor="#6071BF" horizontalAlignment="stretch"/>
+                  <TEXT left="8" top="4" width="186" height="16" foregroundColor="#FFFFFF" fontType="Tahoma" fontSize="8" fontStyle="bold" horizontalAlignment="stretch"
                       value="wmpprop:player.currentMedia ? player.currentMedia.name : 'Now Playing'"/>
-                  <PLAYLIST id="ipl" left="2" top="26" width="196" height="{{ContentH - 22 - 30}}" backgroundColor="#394472" foregroundColor="#FFFFFF" verticalAlignment="stretch"/>
+                  <PLAYLIST id="ipl" left="2" top="26" width="196" height="{{ContentH - 22 - 30}}" backgroundColor="#394472" foregroundColor="#FFFFFF" horizontalAlignment="stretch" verticalAlignment="stretch"/>
                 </SUBVIEW>
                 <SUBVIEW id="svBar" left="0" top="{{ContentH - 22}}" width="{{ContentW}}" height="22" backgroundColor="#282F4A" horizontalAlignment="stretch" verticalAlignment="bottom">
                   <BUTTON left="6" top="4" image="viz_prev.png" hoverImage="viz_prev_hover.png" upToolTip="Previous Visualization" onClick="vis.previous();"/>
@@ -415,6 +415,15 @@ internal static class FullModeSkin
 
         function OnClose() {
             theme.savePreference("Pane", g_pane);
+        }
+
+        // The playlist panel's width (the host's drag handle on its left edge): the picture takes what is left. The panel
+        // keeps its right edge by itself, being right-aligned.
+        function SetListWidth(width) {
+            var change = width - svList.width;
+            if (change == 0) return;
+            svList.width = width;
+            svVideo.width = svVideo.width - change;
         }
 
         // Pages (Settings › Pages): hide unticked tasks from the rail and close the gaps.

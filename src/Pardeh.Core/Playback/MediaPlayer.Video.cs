@@ -17,10 +17,24 @@ public sealed partial class MediaPlayer
     public static string DescribeDelay(TimeSpan delay) =>
         string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{(delay > TimeSpan.Zero ? "+" : delay < TimeSpan.Zero ? "-" : "")}{Math.Abs(delay.TotalSeconds):0.0} s");
 
+    /// <summary>How long a changed delay is written over the picture (full screen has no status line).</summary>
+    private const long DelayNoticeMs = 1500;
+
+    private long _delayNoticeUntil;
+
     public void SetSubtitleDelay(TimeSpan delay)
     {
         SubtitleDelay = TimeSpan.FromMilliseconds(Math.Round(Math.Clamp(delay.TotalSeconds, -MaxSubtitleDelaySeconds, MaxSubtitleDelaySeconds) * 1000));
+        _delayNoticeUntil = Environment.TickCount64 + DelayNoticeMs;
         SetStatus("Subtitle delay " + DescribeDelay(SubtitleDelay));
+    }
+
+    private string? WithDelayNotice(string? subtitle)
+    {
+        if (!ShowSubtitles || Subtitles is null || Environment.TickCount64 >= _delayNoticeUntil)
+            return subtitle;
+        var notice = "[Subtitle delay " + DescribeDelay(SubtitleDelay) + "]";
+        return subtitle is null ? notice : notice + "\n" + subtitle;
     }
 
     public void NudgeSubtitleDelay(int steps) => SetSubtitleDelay(SubtitleDelay + steps * SubtitleDelayStep);
@@ -80,9 +94,8 @@ public sealed partial class MediaPlayer
         if (!ResumeVideos || VideoPositions?.Get(item.Source) is not { } at || !HasVideo || ResumePoint(at, Duration) is null)
             return;
         _engine.Position = TimeSpan.FromSeconds(at);
-        ResumedAt = at;
+        _resumedAt = at;
     }
 
-    /// <summary>Where the current video was taken up again when it opened, or null when it started at the beginning.</summary>
-    public double? ResumedAt { get; private set; }
+    private double? _resumedAt;
 }

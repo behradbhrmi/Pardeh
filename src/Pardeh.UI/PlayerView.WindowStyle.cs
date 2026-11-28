@@ -138,6 +138,14 @@ internal sealed partial class PlayerView
             return;
         }
 
+        MoveWindowOnDrag(e);
+    }
+
+    /// <summary>Moves the window once the pointer travels with the button held; a plain click moves nothing.</summary>
+    private void MoveWindowOnDrag(PointerPressedEventArgs e)
+    {
+        if (Shell is null)
+            return;
         _pendingMove = e;
         _pendingMoveFrom = e.GetPosition(this);
     }

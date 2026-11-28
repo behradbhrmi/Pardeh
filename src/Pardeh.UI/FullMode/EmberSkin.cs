@@ -117,8 +117,8 @@ internal static class EmberSkin
             });
         }
 
-        // The rail's selected icon: orange.
-        foreach (var icon in new[] { "home", "video", "music", "radio", "playlists", "history" })
+        // Orange: the rail's open page, a button whose panel is open or whose setting is on, and the muted speaker.
+        foreach (var icon in new[] { "home", "video", "music", "radio", "playlists", "history", "side", "viz", "captions", "skins", "queue", "muted" })
             files[$"i_{icon}_active.png"] = Png(32, 32, g => IconButton(g, 32, icon, State.Normal, Accent));
 
         // Chrome.
@@ -311,7 +311,7 @@ internal static class EmberSkin
               <SUBVIEW left="{{W - RightW - 66}}" top="0" width="{{RightW + 66}}" height="{{Bar}}" horizontalAlignment="right">
                 <TEXT left="4" top="23" width="60" fontType="{{F}}" fontSize="9" foregroundColor="#8C8C8C"
                     value="wmpprop:player.currentMedia ? player.currentMedia.durationString : '00:00'"/>
-                <MUTEBUTTON id="bMute" left="66" top="15" image="i_mute.png" hoverImage="i_mute_hover.png" downImage="i_muted.png" upToolTip="Mute" downToolTip="Sound"/>
+                <MUTEBUTTON id="bMute" left="66" top="15" image="i_mute.png" hoverImage="i_mute_hover.png" downImage="i_muted_active.png" upToolTip="Mute" downToolTip="Sound"/>
                 <VOLUMESLIDER left="100" top="20" width="88" height="22" backgroundImage="vol_track.png" foregroundImage="vol_fill.png"
                     thumbImage="vol_thumb.png" thumbHoverImage="vol_thumb_hover.png" borderSize="2" direction="horizontal"/>
                 {{Btn("bViz", 196, 15, "viz", "Audio", "pardeh.command('quickPanel', 'audio');")}}
@@ -400,6 +400,24 @@ internal static class EmberSkin
                 button.image = icon + ".png";
                 button.hoverImage = (key == g_side ? icon : "i_" + ICON[key] + "_hover") + ".png";
             }
+        }
+
+        // The host reports what is open or in effect, however it was opened or closed: those buttons turn orange.
+        function OnPanels(page, audio, subtitles, settings, queue, video) {
+            g_side = page;
+            LightRail();
+            Light(bSide, "side", page != "");
+            Light(bViz, "viz", audio);
+            Light(bCaptions, "captions", subtitles);
+            Light(bSettings, "skins", settings);
+            Light(bQueue, "queue", queue);
+        }
+
+        function Light(button, icon, on) {
+            var image = "i_" + icon + (on ? "_active" : "");
+            button.image = image + ".png";
+            button.hoverImage = (on ? image : "i_" + icon + "_hover") + ".png";
+            button.downImage = (on ? image : "i_" + icon + "_down") + ".png";
         }
 
         // The quick panel's Audio Visualizer switch (the host keeps the state for it).

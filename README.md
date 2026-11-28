@@ -137,9 +137,6 @@ sliders. The Pardeh logo can follow the colour too.
 - Volume levelling from ReplayGain tags; untagged files are measured in the background.
 - Sleep timer, A-B repeat, named markers on the seek bar, play speed, and resume for longer videos.
 - Video with embedded and external subtitles, subtitle delay and aspect ratio settings.
-- On-screen messages: after a command a short card over the picture shows the result, such as the volume, the time and time
-  left after a skip, the speed, or the audio or subtitle track. It works in every look and in full screen. Where it sits,
-  how long it stays and which groups show are in the settings.
 
 ### Online media
 
@@ -249,8 +246,10 @@ For every download:
 ### On Windows
 
 - Full mode and skin mode, three window styles, lyrics over the picture or in their own window.
-- Keymap profiles: VLC's keys by default, a Windows Media Player style set, or your own, with import and export. See
-  [keyboard shortcuts](docs/17-keyboard-shortcuts.md).
+- Keymap profiles: VLC's keys by default (here the plain arrows also seek and set the volume), a Windows Media Player
+  style set, or your own, with import and export. See [keyboard shortcuts](docs/17-keyboard-shortcuts.md).
+- Double-click the picture for full screen; a right-click there opens the menu. In Pardeh's own looks, drag the edge of
+  a playlist or side panel to resize it, and double-click the edge for its usual width.
 - A desktop mini player, media keys and file type registration.
 - A Windows 11 Widgets board widget can be built from source (`scripts/build-widget.ps1`); the release packages leave it out.
 

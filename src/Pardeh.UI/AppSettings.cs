@@ -24,22 +24,6 @@ public sealed class AppSettings
 
     public static readonly double[] SkinZooms = [0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];
 
-    // On-screen messages (the short notes over the player after a command).
-
-    public bool OnScreenMessages { get; set; } = true;
-
-    /// <summary>"Top", "TopLeft", "TopRight", "Centre" or "Bottom".</summary>
-    public string NoticePlace { get; set; } = "Top";
-
-    /// <summary>"Short", "Normal" or "Long".</summary>
-    public string NoticeTime { get; set; } = "Normal";
-
-    /// <summary>The title of a new track: "FullScreenAndVideo", "Always" or "Never" (<see cref="Core.Notices.SongTitleNotices"/>).</summary>
-    public string NoticeSongTitle { get; set; } = "FullScreenAndVideo";
-
-    /// <summary>Groups of messages turned off (<see cref="Core.Notices.NoticeCategory"/> names).</summary>
-    public List<string> HiddenNotices { get; set; } = [];
-
     /// <summary>A video carries on where it was left.</summary>
     public bool ResumeVideos { get; set; } = true;
 
@@ -179,6 +163,15 @@ public sealed class AppSettings
 
     /// <summary>Keep a history of look-ups on this device (Looked-Up Songs). Turning it off deletes it.</summary>
     public bool KeepLookupHistory { get; set; } = true;
+
+    /// <summary>Ember: the width of the library side panel, set by dragging its edge. 0: it follows the window.</summary>
+    public double EmberSideWidth { get; set; }
+
+    /// <summary>Ember: the same for the queue panel.</summary>
+    public double EmberQueueWidth { get; set; }
+
+    /// <summary>The playlist column's width, by look, where the user dragged it. A look not listed has its own width.</summary>
+    public Dictionary<string, double> SideListWidths { get; set; } = [];
 
     /// <summary>The user turned downloads on. Its own switch, off by default; each download is still asked for.</summary>
     public bool Downloads { get; set; }
