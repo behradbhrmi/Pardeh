@@ -61,7 +61,7 @@ public sealed partial class MediaPlayer
     {
         if (!NetworkMedia.HasSecret(item.Source))
             return false;
-        SetStatus("Not saved: this address contains a password or token");
+        Announce("Not saved: this address contains a password or token");
         return true;
     }
 }

@@ -62,7 +62,8 @@ internal static partial class OptionsDialog
                     bands[b].Value = eq.GetGain(b);
                 showing = false;
             });
-            return Stack(
+            return Stack([
+                .. NoticeRows(),
                 Section("Playback tools"),
                 Row("Sleep timer", "Pauses playback after a while, with a short fade", sleep),
                 Row("Volume levelling", "ReplayGain tags, or Pardeh's own loudness measurement for files without them",
@@ -110,7 +111,7 @@ internal static partial class OptionsDialog
                 Section("Equalizer"),
                 Toggle("Equalizer on", null, !eq.Bypass, v => eq.Bypass = !v),
                 Row("Preset", "Sets the ten bands below (31 Hz to 16 kHz, -14 to +14 dB)", presets),
-                bandRow);
+                bandRow]);
         }
 
         private Control LyricsPage()

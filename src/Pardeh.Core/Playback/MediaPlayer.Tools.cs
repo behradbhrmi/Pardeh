@@ -207,6 +207,6 @@ public sealed partial class MediaPlayer
             return;
         var position = CurrentPosition;
         if (position >= b)
-            CurrentPosition = a; // past B: back to A (a seek to before A simply plays on up to B)
+            SetPosition(a, SeekKind.Silent); // past B: back to A (a seek to before A simply plays on up to B)
     }
 }

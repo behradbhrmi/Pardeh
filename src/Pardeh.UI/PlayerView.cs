@@ -48,7 +48,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     public PlayerView(StartupOptions startup)
     {
         _startup = startup;
-        _scaler = new LayoutTransformControl { Child = new Panel { Children = { _canvas, _overlay } } };
+        _scaler = new LayoutTransformControl { Child = new Panel { Children = { _canvas, _overlay, _noticeLayer } } };
         _canvas.FullScreenExitRequested += (_, _) => SetFullScreen(false);
         _canvas.Controls.ExitRequested += () => SetFullScreen(false);
         if (OperatingSystem.IsAndroid())
@@ -118,6 +118,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
                 Dispatcher.UIThread.Post(_player.SaveVideoPosition);
         };
         _player.ReplayGain = Enum.TryParse<Pardeh.Core.Playback.ReplayGainMode>(AppSettings.Current.ReplayGain, true, out var levelling) ? levelling : Pardeh.Core.Playback.ReplayGainMode.Off;
+        StartNotices();
         _canvas.BackgroundPressed += (_, e) => OnSurfacePressed(e);
         _canvas.PointerMoved += OnSurfaceMoved;
         _canvas.PointerReleased += (_, _) => _pendingMove = null;
@@ -272,6 +273,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             _library.AddFolder(devFolder);
         RestoreDesktopLyrics();
         StartupMarks.Mark("PlayerView.Start end (full mode loaded)");
+        HushNotices(1.5);
         _lastTick = _clock.Elapsed;
         _timer.Start();
     }
@@ -881,6 +883,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
 
         List<(string Section, string Name, Func<string> Value, Action Change)> all =
         [
+            OnOff("Player", "On-screen messages", () => s.OnScreenMessages, v => s.OnScreenMessages = v),
             ("Player", "Start in", () => startNames[Math.Max(0, Array.IndexOf(starts, s.StartMode))],
                 () => { s.StartMode = starts[(Array.IndexOf(starts, s.StartMode) + 1) % starts.Length]; s.Save(); }),
             OnOff("Player", "One Pardeh at a time (open files in it)", () => s.SingleInstance, v => s.SingleInstance = v),
@@ -1086,6 +1089,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
     {
         CloseQuickPanel();
         _sideWidthShown = 0; // the new skin starts with its stage in place
+        HushNotices(1);
         _session?.Dispose();
         // Phone layouts: touch-sized list rows in the library, queue and list panes.
         var phone = PhoneSkin.IsPhoneSource(package.SourcePath);
@@ -1124,6 +1128,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
 
         _session?.Tick(elapsed);
         _lyrics.Tick();
+        UpdateNotices(now);
         if (!AppVisibility.Foreground)
             return; // in the background: no drawing, no animation
         if (_fullScreen)
@@ -1154,7 +1159,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         if (_snapshotTaken || Environment.GetEnvironmentVariable("PARDEH_SNAPSHOT") is not { Length: > 0 } path)
             return;
         var delay = double.TryParse(Environment.GetEnvironmentVariable("PARDEH_SNAPSHOT_DELAY"), System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 3;
-        if (now.TotalSeconds < delay || _session?.CurrentView is not { } view)
+        if (now.TotalSeconds < delay || AwaitingSnapshotKeys(now) || _session?.CurrentView is not { } view)
             return;
 
         _snapshotTaken = true;
@@ -1197,6 +1202,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
         {
             using var context = bitmap.CreateDrawingContext();
             _canvas.Render(context);
+            _noticeLayer.Render(context);
         }
         bitmap.Save(path, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
         Log($"Snapshot {size.Width}x{size.Height} saved to {path}; window at {Position} size {ClientSize}, state {_player.PlayState}, video {_player.HasVideo}");
@@ -2414,7 +2420,7 @@ internal sealed partial class PlayerView : UserControl, ISkinHost, Rendering.ISe
             var track = embeddedTrack;
             items.Add(Item("Embedded: " + track.Label, async () =>
             {
-                if (!await _player.SelectSubtitleTrackAsync(track))
+                if (!await SelectSubtitleTrack(track))
                     ShowMessage("No subtitles could be read from that track.");
             }, check: _player.EmbeddedSubtitle == track));
         }

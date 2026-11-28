@@ -11,6 +11,9 @@ public sealed partial class MediaPlayer
     /// <summary>True while <see cref="ResumeFile"/> raises its events: the track is the same one, not a new play.</summary>
     public bool IsResumingFile { get; private set; }
 
+    /// <summary>True from the moment the open track is let go for a change until <see cref="ResumeFile"/> has taken it up again.</summary>
+    public bool IsFileReleased { get; private set; }
+
     private bool IsBeingChanged(string source) => _beingChanged.Any(matches => matches(source));
 
     /// <summary>True when the engine has the file open: it is the current track, or the one queued to follow without a gap.</summary>
@@ -29,6 +32,7 @@ public sealed partial class MediaPlayer
         var playing = _playState is PlayState.Playing or PlayState.ScanForward or PlayState.ScanReverse;
         var position = CurrentPosition;
         DropPrepared();
+        IsFileReleased = true; // before the stop, so that those watching know why it stops
         StopInternal(PlayState.Stopped);
         _engine.Close();
         return new FileRelease(matches, current, playing, position);
@@ -41,6 +45,8 @@ public sealed partial class MediaPlayer
     public void ResumeFile(FileRelease release, string? newSource)
     {
         _beingChanged.Remove(release.Matches);
+        if (release.Open is not null)
+            IsFileReleased = false;
         if (release.Open is not { } open || !ReferenceEquals(CurrentMedia, open) && CurrentMedia?.Source != newSource || _engine.IsOpen)
             return;
 

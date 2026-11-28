@@ -43,3 +43,15 @@ public enum OpenState
     MediaWaiting = 20,
     OpeningUnknownUrl = 21,
 }
+
+/// <summary>Why the position was set: a given place, a step from where it was, a marker, or the player's own (scanning, A-B repeat).</summary>
+public enum SeekKind
+{
+    Direct,
+    Relative,
+    Marker,
+    Silent,
+}
+
+/// <summary>One change of position, in seconds. <paramref name="Requested"/> is the step asked for (relative seeks).</summary>
+public readonly record struct SeekInfo(SeekKind Kind, double From, double To, double Requested = 0, string? Label = null);

@@ -18,11 +18,18 @@ internal sealed class FakeEngine : IPlaybackEngine
     public EqualizerSettings Equalizer { get; } = new();
     public event EventHandler? PlaybackEnded;
 
+    /// <summary>Audio tracks of whatever is opened (none unless a test lists some).</summary>
+    public List<AudioTrack> Tracks { get; } = [];
+    public IReadOnlyList<AudioTrack> AudioTracks => Tracks;
+    public int CurrentAudioTrack { get; private set; } = -1;
+    public void SelectAudioTrack(int index) => CurrentAudioTrack = index;
+
     public void Open(string source)
     {
         IsOpen = true;
         Duration = TimeSpan.FromMinutes(3);
         Position = TimeSpan.Zero;
+        CurrentAudioTrack = Tracks.Count > 0 ? 0 : -1;
     }
 
     public void Close() => IsOpen = false;

@@ -25,6 +25,7 @@
 | Volume, mute | Ctrl+Up / Down, M |
 | Seek 3 s / 10 s / 1 min / 5 min | Shift / Alt / Ctrl / Ctrl+Alt + Left or Right |
 | Speed: faster, slower, normal, fine | +, -, =, ] and [ |
+| Show position (time, time left and when it ends) | T |
 | Shuffle, repeat | R, L |
 | Audio track, subtitle track, subtitles on / off | B, V, Shift+V |
 | Subtitle delay | G, H |
@@ -42,7 +43,7 @@ As in VLC, the plain arrow keys belong to disc menus, so they do not seek.
 
 ### Not in Pardeh yet
 
-These VLC actions keep their keys but do nothing: next frame, record, show position, audio device, audio delay, subtitle
+These VLC actions keep their keys but only show a "not in Pardeh yet" message: next frame, record, audio device, audio delay, subtitle
 sync marks, the zoom / autoscale / deinterlace / wallpaper / pixel-crop / 360° / program video actions, disc, title and
 chapter navigation, codec information, open disc or capture device, convert, stream, messages log, stream manager.
 The editor lists them under "Show actions Pardeh can't do yet". The desktop widget uses `Ctrl+Shift+W`, which is the
@@ -63,7 +64,8 @@ Mouse and wheel hotkeys, and VLC's system-wide (global) hotkeys, are not covered
 | `Pardeh.UI/Rendering/OptionsDialog.Keyboard.cs` | The editor page |
 
 **Adding a shortcut:** add a `KeyCmd` id and a catalogue entry, a default chord in each built-in that should have one
-(`KeymapTests` fails if a key is used twice), and a `case` in `RunKeyCommand`. In menus pass the id,
+(`KeymapTests` fails if a key is used twice), and a `case` in `PerformKeyCommand`. A change to the player shows its on-screen message by itself; a command that can find
+nothing to do answers in `AnswerBefore` or `AnswerAfter` (`PlayerView.Notices.cs`). In menus pass the id,
 `Item("Label", action, KeyCmd.X)`, so the hint follows the keymap. Never write a key name in UI text; use
 `Keymaps.WithKey`. Do not change a command id once it has shipped: keymap files store it.
 
