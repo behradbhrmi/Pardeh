@@ -92,6 +92,23 @@ public sealed class SearchOnlineViewTests
     }
 
     [Fact]
+    public async Task A_repeated_search_is_remembered_until_a_fresh_answer_is_wanted()
+    {
+        var database = new Database { Found = [Entry(Few, 1)] };
+        var lookup = new MetadataLookup(database);
+        var song = OnlineData.Song();
+
+        await lookup.SearchAsync("Quiet River", "", song, TestContext.Current.CancellationToken);
+        await lookup.SearchAsync("Quiet River", "", song, TestContext.Current.CancellationToken);
+        Assert.Single(database.Asked);
+
+        lookup.Forget();
+        await lookup.SearchAsync("Quiet River", "", song, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, database.Asked.Count);
+    }
+
+    [Fact]
     public async Task Nothing_found_says_so()
     {
         var view = new SearchOnlineView(CleanupInk.Desktop, new SearchOnlineContext

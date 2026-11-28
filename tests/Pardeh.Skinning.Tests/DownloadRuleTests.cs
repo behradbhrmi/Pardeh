@@ -68,6 +68,28 @@ public sealed class DownloadRuleTests
         await Assert.ThrowsAsync<DownloadException>(() => rules.CheckAsync(new Uri("https://sneaky.example.org/a.mp3"), DownloadKind.PastedLink, TestContext.Current.CancellationToken));
     }
 
+    [Theory]
+    [InlineData("198.18.0.102")]
+    [InlineData("198.19.255.1")]
+    public async Task A_tunnels_stand_in_answer_to_a_name_is_accepted_but_not_when_written_out(string address)
+    {
+        var rules = new DownloadRules { Resolve = (_, _) => Task.FromResult(new[] { IPAddress.Parse(address) }) };
+
+        await rules.CheckAsync(new Uri("https://music.example.org/a.mp3"), DownloadKind.PastedLink, TestContext.Current.CancellationToken);
+
+        Assert.Contains("this device", rules.WhyRefused(new Uri($"https://{address}/a.mp3"), DownloadKind.PastedLink));
+        Assert.False(Pardeh.Core.Downloads.NetworkRules.IsPublicAddress(IPAddress.Parse(address)));
+    }
+
+    [Fact]
+    public async Task A_stand_in_answer_does_not_cover_for_a_private_one()
+    {
+        var rules = new DownloadRules { Resolve = (_, _) => Task.FromResult(new[] { IPAddress.Parse("198.18.0.5"), IPAddress.Parse("192.168.0.2") }) };
+
+        await Assert.ThrowsAsync<DownloadException>(
+            () => rules.CheckAsync(new Uri("https://music.example.org/a.mp3"), DownloadKind.PastedLink, TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task A_name_that_changes_between_the_check_and_the_connection_is_still_refused()
     {

@@ -80,6 +80,13 @@ public sealed class MetadataLookup(IMetadataProvider provider)
         return main.Length > 0 ? Words(main) : null;
     }
 
+    /// <summary>Drops what is remembered, when the user asks for a fresh answer.</summary>
+    public void Forget()
+    {
+        lock (_found)
+            _found.Clear();
+    }
+
     private async Task<IReadOnlyList<MetadataCandidate>> Search(MetadataSearch search, CancellationToken cancel)
     {
         // Kept while the app runs: asking the same thing twice is a request wasted. Failures are not kept.

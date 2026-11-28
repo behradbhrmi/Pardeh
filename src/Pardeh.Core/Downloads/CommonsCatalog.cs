@@ -20,6 +20,9 @@ public sealed record CatalogFile(string Title, string Creator, string LicenseNam
 
     public bool NoDerivatives { get; init; }
 
+    /// <summary>Stated to be in the public domain, or dedicated to it: no licence asks for credit.</summary>
+    public bool PublicDomain { get; init; }
+
     /// <summary>The wording the creator asks to be credited with, where one is stated.</summary>
     public string Attribution { get; init; } = string.Empty;
 
@@ -238,6 +241,7 @@ public sealed partial class CommonsCatalog(HttpClient http, string userAgent, Re
         {
             NonCommercial = parts.Contains("nc"),
             NoDerivatives = parts.Contains("nd"),
+            PublicDomain = code is "pd" or "cc0" or "cc-zero" || code.StartsWith("pd-", StringComparison.Ordinal) || code.StartsWith("cc-pd", StringComparison.Ordinal),
             Attribution = Meta("Attribution"),
             Origin = Meta("Credit"),
             Restrictions = Meta("Restrictions"),

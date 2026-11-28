@@ -39,6 +39,18 @@ public static class NetworkRules
         return true;
     }
 
+    /// <summary>
+    /// 198.18.0.0/15, set aside for network tests, which many VPN and tunnel apps answer every name look-up with: the
+    /// address stands for the site, and the app forwards the connection. Only a looked-up name may lead there, never an
+    /// address written out, and https still demands the site's own certificate.
+    /// </summary>
+    public static bool IsStandInAddress(IPAddress address)
+    {
+        if (address.IsIPv4MappedToIPv6)
+            address = address.MapToIPv4();
+        return address.AddressFamily == AddressFamily.InterNetwork && Within(address.GetAddressBytes(), [198, 18, 0, 0], 15);
+    }
+
     public static bool IsPublicAddress(IPAddress address)
     {
         if (address.IsIPv4MappedToIPv6)

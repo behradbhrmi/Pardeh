@@ -188,8 +188,10 @@ internal sealed class CatalogView : UserControl
         ask.Children.Clear();
         ask.Children.Add(_ink.Label($"Download {offer.FileName} ({DownloadText.Size(offer.Size)}) from {offer.Final.IdnHost}?"
             + (_ink.Narrow ? " The size counts on mobile data too." : string.Empty), bold: true));
-        ask.Children.Add(_ink.Label($"Under {file.LicenseName}: credit the author, and name and link the licence, when you share it. "
-            + "A recording and the piece it plays can have different rights: what is shown is what the catalog says, and no more.", 12));
+        var duty = file.PublicDomain
+            ? $"Stated as {file.LicenseName}: saying where it came from is still good practice."
+            : $"Under {file.LicenseName}: when you share it, credit the author, name and link the licence, and follow its other terms.";
+        ask.Children.Add(_ink.Label(duty + " A recording and the piece it plays can have different rights: what is shown is what the catalog says, and no more.", 12));
         ask.Children.Add(_ink.Label("Saved to: " + _context.Manager.Target.Description, 12, colour: _ink.Sub));
         ask.Children.Add(Row(_ink.Button("Download", async () =>
         {

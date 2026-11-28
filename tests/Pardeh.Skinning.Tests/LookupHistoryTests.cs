@@ -93,6 +93,19 @@ public sealed class LookupHistoryTests : IDisposable
     }
 
     [Fact]
+    public void A_file_listed_already_is_not_taken_in_again_and_older_results_go_below()
+    {
+        var history = History();
+        history.AddSong("MusicBrainz", "/music/one.mp3", Entry() with { LookedUp = _now });
+        history.Flush();
+
+        var later = History(); // the next start takes in what was saved
+        later.Seed("MusicBrainz", new Dictionary<string, OnlineEntry> { ["/music/one.mp3"] = Entry(), ["/music/two.mp3"] = Entry() });
+
+        Assert.Equal(["/music/one.mp3", "/music/two.mp3"], later.Rows.Select(r => r.Source));
+    }
+
+    [Fact]
     public void Nothing_is_taken_in_while_no_history_is_kept_and_it_can_be_later()
     {
         var saved = new Dictionary<string, OnlineEntry> { ["/music/one.mp3"] = Entry() };

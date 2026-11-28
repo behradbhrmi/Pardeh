@@ -125,6 +125,14 @@ public sealed class CommonsCatalogTests
         Assert.NotNull(file.SourcePage); // the page can be opened either way
     }
 
+    [Theory]
+    [InlineData("pd", true)]
+    [InlineData("cc0", true)]
+    [InlineData("cc-by-4.0", false)]
+    [InlineData("gfdl", false)]
+    public void The_public_domain_is_told_apart_from_licences_that_ask_for_credit(string code, bool publicDomain) =>
+        Assert.Equal(publicDomain, Assert.Single(CommonsData.Parse(CommonsData.Page(1, license: code, licenseName: code))).PublicDomain);
+
     [Fact]
     public void Non_commercial_and_no_derivatives_are_told_apart()
     {

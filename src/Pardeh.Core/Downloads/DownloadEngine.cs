@@ -442,7 +442,8 @@ public sealed class DownloadEngine(HttpClient http, DownloadRules rules, AudioCh
             }
 
             var address = job.MayBeSaved ? job.Address : Playback.NetworkMedia.Redact(job.Address);
-            return new DownloadRecord(job.Id, DateTime.UtcNow, job.Kind, source, name, address, length) { Credit = job.Credit };
+            // A taken name got a number: the record has the name the file ended up with.
+            return new DownloadRecord(job.Id, DateTime.UtcNow, job.Kind, source, Path.GetFileName(source), address, length) { Credit = job.Credit };
         }
         finally
         {

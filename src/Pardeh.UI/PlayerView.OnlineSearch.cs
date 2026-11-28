@@ -143,6 +143,8 @@ internal sealed partial class PlayerView
                 return Said(files.Count);
             }
 
+            // "Again" means asking the service, not what it said a minute ago.
+            Metadata.Forget();
             if (row.Source is { } source && SongFor(source) is { } song && _checker is { } checker)
             {
                 var entry = await checker.CheckAsync(song, cancel);

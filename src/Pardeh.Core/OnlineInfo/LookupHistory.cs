@@ -198,13 +198,24 @@ public sealed class LookupHistory
     /// <summary>Takes in, once, the results saved before there was a history.</summary>
     public void Seed(string service, IEnumerable<KeyValuePair<string, OnlineEntry>> saved)
     {
-        lock (_gate)
-            if (_seeded || !_keep())
-                return;
-        foreach (var (source, entry) in saved.OrderBy(s => s.Value.LookedUp))
-            AddSong(service, source, entry);
+        HashSet<string> listed;
         lock (_gate)
         {
+            if (_seeded || !_keep())
+                return;
+            // The history may have begun before this was run: a file it lists already is not listed again.
+            listed = new HashSet<string>(_rows.Select(r => r.Source).OfType<string>(), StringComparer.Ordinal);
+        }
+
+        foreach (var (source, entry) in saved.OrderBy(s => s.Value.LookedUp))
+            if (!listed.Contains(source))
+                AddSong(service, source, entry);
+        lock (_gate)
+        {
+            // Older results go before what was already listed.
+            var ordered = _rows.OrderBy(r => r.When).ToList();
+            _rows.Clear();
+            _rows.AddRange(ordered);
             _seeded = true;
             _unsaved++;
         }

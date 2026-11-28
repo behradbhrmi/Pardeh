@@ -82,6 +82,8 @@ public sealed class DownloadTests : IDisposable
         Assert.Equal("mine", File.ReadAllText(mine));
         Assert.True(File.Exists(Path.Combine(_f.Target.Folder, "song (2).mp3")));
         Assert.Equal(2, _f.Added.Length);
+        // The list names the file that is there, not the one that was asked for.
+        Assert.Equal("song (2).mp3", Assert.Single(_f.Manager.Store.Finished).FileName);
     }
 
     [Theory]

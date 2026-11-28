@@ -118,7 +118,7 @@ public class DownloadRules
         }
 
         // One private address among them is enough: which one would be used is not ours to say.
-        if (found.Length == 0 || !found.All(NetworkRules.IsPublicAddress))
+        if (found.Length == 0 || !found.All(a => NetworkRules.IsPublicAddress(a) || NetworkRules.IsStandInAddress(a)))
             throw new DownloadException($"{host} leads to an address on this device or its network (or one a network filter uses), so nothing is downloaded from it.");
         return found;
     }
