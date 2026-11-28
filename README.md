@@ -171,6 +171,52 @@ sliders. The Pardeh logo can follow the colour too.
   - **Check the playing song:** a second setting, also **off**. A song that plays for a few seconds is looked up by
     itself, once. Nothing is changed.
 - A blue mark shows a song with a match found online, an amber one a song that needs cleaning up.
+- A match has a **Where to get it** button: see below.
+
+### Online search and downloads
+
+**Search Online**, **Looked-Up Songs** and **Downloads** are in the app menu. Online look-ups and downloads have separate
+switches, both **off** until you turn them on.
+
+- **Search Online** looks for any song by title and artist, in your library or not. The words you type go to MusicBrainz.
+- **Where to get it** asks MusicBrainz for the pages it lists for a match: free download pages, shops and streaming
+  services. It asks only when you press it. Anyone can edit MusicBrainz, so a listed link is no promise, and no links does
+  not mean a song is not sold. A link opens in your browser (`https` only, after you have seen the site's name). Pardeh
+  downloads nothing from those pages.
+- **Looked-Up Songs** is the history of your look-ups and searches, with what they found. It is kept **on your device
+  only**, up to 5,000 entries, and is on by default once you use online look-ups. You can filter it, look something up
+  again, delete one entry or clear it all. Turning **Keep a history of look-ups** off deletes it. Opening it sends nothing.
+
+**Downloads** are for audio files only, and each one is asked about first. There are two ways:
+
+- **Free files from [Wikimedia Commons](https://commons.wikimedia.org):** classical, public-domain and openly licensed
+  work, and little popular music. The words you type are sent to Commons, and files come from Wikimedia's file server;
+  both get the app's name, version and this project's address. A download is offered only for a file with a licence
+  Pardeh recognises as permitting it. You see the author, licence and source first, and the app's list of downloads keeps
+  them. The licence and source are also written into the file where it has room for them (never into a No-Derivatives
+  file). These details are as Commons' contributors state them: Pardeh can't guarantee them.
+- **A pasted link:** the address of an audio file, downloaded as a browser would download it. **Pardeh can't tell whether
+  you may download it; that is for you to be sure of**, and no licence is recorded. The request goes to the host in the
+  link as `Pardeh/1.0` (Wikimedia hosts get the version and project address too).
+  - Only `https` addresses of public web sites, on the standard port. Addresses of your device or local network are
+    refused, also after a redirect.
+  - A web page is never searched for files. Playlists and stream manifests are refused.
+  - Links to video and streaming services, such as YouTube, SoundCloud or Spotify, are refused, and Pardeh takes no audio
+    out of them. The list of services is fixed, so it can't be complete.
+  - Some VPN and tunnel apps answer every name look-up with a stand-in address (`198.18.0.0/15`), which Pardeh accepts
+    for a name. Behind such a tunnel, or a system proxy, Pardeh can't check a site's real address.
+
+No cookies, sign-ins, files or personal details are sent with a download or a search. As with any request, the host sees
+your network address.
+
+For every download:
+
+- At most 200 MB, one at a time. The whole file is read with FFmpeg before it is added: it must be complete audio with no
+  moving picture, and match the checksum where Commons gives one. Without FFmpeg there are no downloads.
+- Files go to **Pardeh Downloads** in your Music folder on Windows, and to **Music/Pardeh** on Android, then into the
+  library. Nothing is overwritten.
+- You can pause, resume or cancel. Resuming continues where it stopped if the server allows it and its file has not
+  changed. Downloads run only while Pardeh is open.
 
 ### Duplicates
 
@@ -241,6 +287,10 @@ dotnet run --project src/Pardeh.App -- path\to\Skin.wmz [media files...]
 With no skin argument Pardeh opens its full mode, or the last skin you used. Building the whole solution (`Pardeh.slnx`)
 also builds the Android app, which needs the Android tools: see [building for Android](docs/android-build.md).
 
+To leave **Download from a link** out of a build, for example for a store whose rules it may not meet, add
+`-p:PardehLinkDownloads=false`. This removes the paste box; downloads from Wikimedia Commons and the shared download code
+stay.
+
 **Package for Windows** (a zip in `dist\`; add `-Standalone` for the package that includes .NET, or `-Installer`
 for that package and a setup program, which needs [Inno Setup](https://jrsoftware.org/isinfo.php) 6.6 or newer):
 
@@ -262,7 +312,7 @@ Tests that need reference skins, FFmpeg or the internet are skipped when those a
 
 | Project | Purpose |
 | --- | --- |
-| `Pardeh.Core` | Player model: playlist, transport, library, lyrics, keymaps, network addresses |
+| `Pardeh.Core` | Player model: playlist, transport, library, lyrics, keymaps, network addresses; Fix Info, duplicates, online look-ups and downloads |
 | `Pardeh.Nava` | Audio: decoding, play speed, equalizer, effects, gapless and crossfade, spectrum, output (WASAPI, AudioTrack) |
 | `Pardeh.Nama` | Video: decoding, each picture at its time, the video clock, subtitles inside video files |
 | `Pardeh.Engine` | The playback engine: puts Nava and Nama together and keeps them in step; network and web page addresses |
@@ -283,6 +333,7 @@ Environment variables for development:
 - `PARDEH_GLASS_TINT=amber`: forces a Pardeh Glass colour.
 - `PARDEH_DATA_DIR=folder`: uses this folder instead of `%APPDATA%\Pardeh`.
 - `PARDEH_LIBRARY_FOLDERS=a;b`: scans these folders instead of Music and Videos.
+- `PARDEH_DOWNLOAD_DIR=folder` (Windows): saves downloads here instead of **Pardeh Downloads** in the Music folder.
 - `PARDEH_MUTE=1`: starts muted. `PARDEH_NO_FFMPEG=1`: uses the Media Foundation decoders. `PARDEH_DIAG=1`: logs player state.
 - Log file: `%APPDATA%\Pardeh\pardeh.log`.
 
